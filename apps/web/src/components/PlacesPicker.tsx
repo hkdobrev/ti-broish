@@ -6,12 +6,14 @@ import {
   fetchRegions,
   fetchSections,
   fetchTowns,
+  type CityRegion,
   type Country,
   type ElectionRegion,
   type PollingSection,
   type Town,
 } from '../signup/geo'
 import type { HomePlace } from '../signup/model'
+import { sectionDesk } from '../signup/sections'
 
 const inputClass =
   'min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-base text-[var(--ink)]'
@@ -21,11 +23,15 @@ export function PlacesPicker({
   onChange,
   sectionLabel = 'Секция, ако имаш предпочитание',
   footnote,
+  deskSections = false,
+  onGeography,
 }: {
   value: HomePlace | null
   onChange: (place: HomePlace | null) => void
   sectionLabel?: string
   footnote?: string
+  deskSections?: boolean
+  onGeography?: (info: { districts: CityRegion[]; sections: PollingSection[] }) => void
 }) {
   const [regions, setRegions] = useState<ElectionRegion[]>([])
   const [countries, setCountries] = useState<Country[]>([])
@@ -118,11 +124,13 @@ export function PlacesPicker({
   }, [abroad, towns, value?.municipalityCode, value?.municipalityName, value?.regionCode, value?.regionName, value?.townId])
 
   useEffect(() => {
-    if (!value?.townId || value.sectionId || sections.length !== 1) return
+    if (!value?.townId || value.sectionId) return
     const sectionKey = `${value.townId}:${value.cityRegionCode ?? ''}`
     if (autoSectionFor.current === sectionKey) return
+    const paper = sections.filter((section) => sectionDesk(section) !== 'machine')
+    if (paper.length !== 1) return
     autoSectionFor.current = sectionKey
-    const section = sections[0]
+    const section = paper[0]
     if (!section) return
     onChangeRef.current({ ...value, sectionId: section.id, sectionPlace: section.place })
   }, [sections, value])
@@ -145,6 +153,17 @@ export function PlacesPicker({
   })
   const town = towns.find((item) => item.id === value?.townId)
   const districts = [...(town?.cityRegions ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'bg'))
+  const districtKey = districts.map((item) => item.code).join(',')
+  const sectionKey = sections.map((item) => item.id).join(',')
+  const onGeographyRef = useRef(onGeography)
+  const districtsRef = useRef(districts)
+  const sectionsRef = useRef(sections)
+  onGeographyRef.current = onGeography
+  districtsRef.current = districts
+  sectionsRef.current = sections
+  useEffect(() => {
+    onGeographyRef.current?.({ districts: districtsRef.current, sections: sectionsRef.current })
+  }, [districtKey, sectionKey])
 
   if (loading) return <p className="text-[var(--ink-soft)]">Зареждаме областите…</p>
   if (error) return <p className="text-red-700">{error}</p>
@@ -292,11 +311,14 @@ export function PlacesPicker({
             }}
           >
             <option value="">Без конкретна секция</option>
-            {[...sections].sort(compareSections).map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.place}
-              </option>
-            ))}
+            {[...sections].sort(compareSections).map((item) => {
+              const machine = deskSections && sectionDesk(item) === 'machine'
+              return (
+                <option key={item.id} value={item.id} disabled={machine}>
+                  {machine ? `${item.place} · машинна` : item.place}
+                </option>
+              )
+            })}
           </select>
         </label>
       ) : null}
@@ -324,6 +346,8 @@ function pickTown(towns: Town[]) {
 }
 
 function compareSections(a: PollingSection, b: PollingSection) {
+  const desk = Number(sectionDesk(a) === 'machine') - Number(sectionDesk(b) === 'machine')
+  if (desk !== 0) return desk
   const numA = a.place.match(/^\d+/)
   const numB = b.place.match(/^\d+/)
   if (numA && numB) {

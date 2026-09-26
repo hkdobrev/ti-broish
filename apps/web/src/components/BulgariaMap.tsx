@@ -1,10 +1,21 @@
 import { useEffect, useState, type ComponentType } from 'react'
 
+export interface MapPoint {
+  id: string
+  lat: number
+  lng: number
+  label: string
+  kind: 'district' | 'paper' | 'machine' | 'unknown'
+  selected?: boolean
+}
+
 type MapProps = {
   regionCodes: string[]
   focus?: { lat: number; lng: number; zoom: number } | null
   interactive?: boolean
   onToggle?: (regionCode: string) => void
+  points?: MapPoint[]
+  onPoint?: (id: string) => void
 }
 
 export function BulgariaMap(props: MapProps) {

@@ -128,6 +128,7 @@ export function stepsFor(role: Role | null): readonly StepId[] {
 export function mapZoom(place: HomePlace | null, radius: Radius | null) {
   if (!place) return null
   if (radius === 'region' || radius === 'distant') return null
+  if (place.cityRegionName && place.townName) return 14
   if (radius === 'cityRegion' && place.townName) return 14
   if (radius === 'settlement' && place.townName) return 13
   if (radius === 'municipality' && place.municipalityName) return 11
@@ -143,6 +144,10 @@ export function mapQuery(place: HomePlace | null, radius: Radius | null) {
     return query || null
   }
   if (radius === 'region' || radius === 'distant') return null
+  if (place.cityRegionName && place.townName) {
+    const town = place.townName.replace(/^(гр\.|с\.|к\.|ман\.)\s*/u, '')
+    return [`район ${place.cityRegionName}`, town, place.regionName, 'България'].filter(Boolean).join(', ')
+  }
   if ((radius === 'municipality' || !place.townName) && place.municipalityName) {
     return [`община ${place.municipalityName}`, place.regionName, 'България'].filter(Boolean).join(', ')
   }

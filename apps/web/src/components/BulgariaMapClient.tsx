@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { GeoJSON, MapContainer, TileLayer, useMap } from 'react-leaflet'
+import { CircleMarker, GeoJSON, MapContainer, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import type { MapPoint } from './BulgariaMap'
 import type { FeatureCollection, GeoJsonObject } from 'geojson'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -103,16 +104,30 @@ function FitTo({
   return null
 }
 
+function pointStyle(point: MapPoint) {
+  if (point.kind === 'machine') {
+    return { color: '#666', fillColor: '#c8c8c8', fillOpacity: 0.95, weight: point.selected ? 3 : 1 }
+  }
+  if (point.kind === 'district') {
+    return { color: '#0e8f82', fillColor: '#38decb', fillOpacity: point.selected ? 0.9 : 0.45, weight: point.selected ? 3 : 1 }
+  }
+  return { color: '#0e8f82', fillColor: '#30cebc', fillOpacity: 0.9, weight: point.selected ? 3 : 1 }
+}
+
 export function BulgariaMapClient({
   regionCodes,
   focus,
   interactive,
   onToggle,
+  points = [],
+  onPoint,
 }: {
   regionCodes: string[]
   focus?: { lat: number; lng: number; zoom: number } | null
   interactive?: boolean
   onToggle?: (regionCode: string) => void
+  points?: MapPoint[]
+  onPoint?: (id: string) => void
 }) {
   const [data, setData] = useState<FeatureCollection | null>(null)
 
@@ -155,6 +170,17 @@ export function BulgariaMapClient({
             }}
           />
         ) : null}
+        {points.map((point) => (
+          <CircleMarker
+            key={point.id}
+            center={[point.lat, point.lng]}
+            radius={point.kind === 'district' ? 13 : 8}
+            pathOptions={pointStyle(point)}
+            eventHandlers={{ click: () => onPoint?.(point.id) }}
+          >
+            <Tooltip>{point.label}</Tooltip>
+          </CircleMarker>
+        ))}
       </MapContainer>
     </div>
   )

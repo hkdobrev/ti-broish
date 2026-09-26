@@ -84,6 +84,72 @@ main h1 {
   font-weight: 700;
 }
 
+.nav-burger {
+  display: none;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  padding: 9px 6px;
+}
+
+.nav-burger span {
+  display: block;
+  height: 2px;
+  margin: 5px 0;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+
+.nav-burger.is-open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.nav-burger.is-open span:nth-child(2) {
+  opacity: 0;
+}
+
+.nav-burger.is-open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+.mobile-menu {
+  position: fixed;
+  top: 60px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 19;
+  overflow: auto;
+  background: #20a898;
+  padding: 12px 20px 32px;
+}
+
+.mobile-menu a {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.mobile-menu a:hover {
+  color: #eee;
+}
+
+@media (max-width: 952px) {
+  .site-header .site-nav {
+    display: none;
+  }
+
+  .nav-burger {
+    display: block;
+  }
+}
+
 .site-header nav a {
   flex: 0 0 auto;
   padding: 10px;

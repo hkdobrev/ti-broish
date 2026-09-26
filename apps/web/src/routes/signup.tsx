@@ -1,11 +1,11 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { BulgariaMap } from '../components/BulgariaMap'
+import { BulgariaMap, type MapPoint } from '../components/BulgariaMap'
+import { OblastPicker } from '../components/OblastPicker'
 import { PlacesPicker } from '../components/PlacesPicker'
 import { StaffNote } from '../components/StaffNote'
 import { loadSignup, saveSignup } from '../signup/db'
 import { geocodePlace } from '../signup/geo'
-import { OBLASTS } from '../signup/oblasts'
 import {
   EXPERIENCE,
   codeFor,
@@ -26,7 +26,9 @@ import {
   type Role,
   type StepId,
 } from '../signup/model'
+import { sectionDesk, spreadAround } from '../signup/sections'
 import { ensureInviteCode, updateProfile, useProfile } from '../signup/store'
+import type { CityRegion, PollingSection } from '../signup/geo'
 
 export const Route = createFileRoute('/signup')({
   validateSearch: (search: Record<string, unknown>): { step: string } => ({
@@ -327,6 +329,68 @@ function ExperienceStep({ error, onError, onNext }: { error: string; onError: (v
   )
 }
 
+function mapPoints(
+  place: Profile['place'],
+  focus: { lat: number; lng: number; zoom: number } | null,
+  geography: { districts: CityRegion[]; sections: PollingSection[] },
+): MapPoint[] {
+  if (!focus || !place || place.regionCode === '32') return []
+  const points: MapPoint[] = geography.districts.map((district, index) => {
+    const selected = district.code === place.cityRegionCode
+    const at = selected ? focus : spreadAround(focus, index)
+    return {
+      id: `district:${district.code}`,
+      lat: at.lat,
+      lng: at.lng,
+      label: district.name,
+      kind: 'district' as const,
+      selected,
+    }
+  })
+  const showSections = geography.sections.length > 0 && (!geography.districts.length || place.cityRegionCode)
+  if (!showSections) return points
+  for (const [index, section] of geography.sections.entries()) {
+    const at = spreadAround(focus, index + Math.max(geography.districts.length, 1))
+    const desk = sectionDesk(section)
+    points.push({
+      id: `section:${section.id}`,
+      lat: at.lat,
+      lng: at.lng,
+      label: desk === 'machine' ? `${section.place} · машинна` : section.place,
+      kind: desk,
+      selected: section.id === place.sectionId,
+    })
+  }
+  return points
+}
+
+function selectMapPoint(
+  profile: Profile,
+  id: string,
+  geography: { districts: CityRegion[]; sections: PollingSection[] },
+) {
+  if (!profile.place) return
+  if (id.startsWith('district:')) {
+    const code = id.slice('district:'.length)
+    const district = geography.districts.find((item) => item.code === code)
+    if (!district) return
+    updateProfile({
+      place: {
+        ...profile.place,
+        cityRegionCode: district.code,
+        cityRegionName: district.name,
+        sectionId: undefined,
+        sectionPlace: undefined,
+      },
+    })
+    return
+  }
+  const sectionId = id.slice('section:'.length)
+  const section = geography.sections.find((item) => item.id === sectionId)
+  if (!section || sectionDesk(section) === 'machine') return
+  updateProfile({ place: { ...profile.place, sectionId: section.id, sectionPlace: section.place } })
+}
+
 function toggleDistant(profile: Profile, code: string) {
   const home = profile.place?.regionCode
   if (code === home || (home === 'sofia-merged' && ['23', '24', '25'].includes(code))) return
@@ -336,30 +400,11 @@ function toggleDistant(profile: Profile, code: string) {
   })
 }
 
-function DistantOblasts({ profile }: { profile: Profile }) {
-  const home = new Set(highlightCodes(profile.place, 'region', []))
-  const choices = OBLASTS.filter((oblast) => !oblast.regionCodes.some((code) => home.has(code)))
-  return (
-    <fieldset className="grid gap-2">
-      <legend className="text-sm font-semibold">Други области</legend>
-      {choices.map((oblast) => {
-        const code = oblast.regionCodes[0]
-        if (!code) return null
-        return (
-          <label key={oblast.id} className="flex min-h-12 items-center gap-3 rounded-2xl bg-white px-4">
-            <input type="checkbox" checked={profile.distantRegionCodes.includes(code)} onChange={() => toggleDistant(profile, code)} />
-            {oblast.name}
-          </label>
-        )
-      })}
-    </fieldset>
-  )
-}
-
 function PlaceStep({ error, onError, onNext }: { error: string; onError: (value: string) => void; onNext: () => void }) {
   const { profile } = useProfile()
   const [focus, setFocus] = useState<{ lat: number; lng: number; zoom: number } | null>(null)
   const [showMap, setShowMap] = useState(false)
+  const [geography, setGeography] = useState<{ districts: CityRegion[]; sections: PollingSection[] }>({ districts: [], sections: [] })
   const options = radiusOptions(profile.place)
   const highlighted = highlightCodes(profile.place, profile.radius, profile.distantRegionCodes)
   const query = mapQuery(profile.place, profile.radius)
@@ -393,7 +438,7 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
           return
         }
         if (profile.radius === 'distant' && profile.place?.regionCode !== '32' && profile.distantRegionCodes.length === 0) {
-          onError('Добави поне една друга област от картата.')
+          onError('Добави поне една друга област.')
           return
         }
         onNext()
@@ -408,9 +453,16 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
           focus={focus}
           interactive={profile.radius === 'distant' && profile.place?.regionCode !== '32'}
           onToggle={(code) => toggleDistant(profile, code)}
+          points={mapPoints(profile.place, focus, geography)}
+          onPoint={(id) => selectMapPoint(profile, id, geography)}
         />
       ) : null}
+      {showMap && focus && profile.place?.regionCode !== '32' ? (
+        <p className="text-sm leading-6">Районите са по-големите точки. Хартиените секции са зелени, машинните са сиви. Точките са в избраното място, не на точния адрес.</p>
+      ) : null}
       <PlacesPicker
+        deskSections
+        onGeography={setGeography}
         value={profile.place}
         onChange={(place) => {
           const regionChanged = place?.regionCode !== profile.place?.regionCode
@@ -421,6 +473,11 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
           })
         }}
       />
+      {profile.place?.townId ? (
+        <p className="text-sm leading-6">
+          В избраното място първо разпределяме към хартиените секции, тези с под 300 избиратели. Машинна секция остава, ако хартиените вече са заети.
+        </p>
+      ) : null}
       {options.length > 0 ? (
         <fieldset className="grid gap-2">
           <legend className="mb-1 text-sm font-semibold">Докъде можеш да стигнеш</legend>
@@ -432,7 +489,7 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
           ))}
         </fieldset>
       ) : null}
-      {profile.radius === 'distant' && profile.place?.regionCode !== '32' ? <DistantOblasts profile={profile} /> : null}
+      {profile.radius === 'distant' && profile.place?.regionCode !== '32' ? <OblastPicker profile={profile} /> : null}
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
       <button className={button} type="submit">
         Напред
@@ -452,12 +509,12 @@ function Seats({ onNext }: { onNext: () => void }) {
       }}
     >
       <p>Колко души можеш да вземеш, освен себе си. 0 значи, че не возиш никого.</p>
-      <div className="flex items-center gap-3">
-        <button type="button" className={ghost} onClick={() => updateProfile({ carSeats: Math.max(0, profile.carSeats - 1) })}>
+      <div className="flex items-center justify-between gap-3">
+        <button type="button" className="h-14 w-14 rounded-full border border-[#ddd] bg-white text-3xl font-bold" onClick={() => updateProfile({ carSeats: Math.max(0, profile.carSeats - 1) })}>
           −
         </button>
         <span className="text-3xl font-extrabold">{profile.carSeats}</span>
-        <button type="button" className={ghost} onClick={() => updateProfile({ carSeats: Math.min(6, profile.carSeats + 1) })}>
+        <button type="button" className="h-14 w-14 rounded-full border border-[#ddd] bg-white text-3xl font-bold" onClick={() => updateProfile({ carSeats: Math.min(6, profile.carSeats + 1) })}>
           +
         </button>
       </div>

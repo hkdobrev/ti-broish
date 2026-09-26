@@ -28,6 +28,8 @@ export interface Town {
 export interface PollingSection {
   id: string
   place: string
+  votersCount?: number | null
+  isMachine?: boolean | null
 }
 
 export interface Country {
@@ -83,7 +85,13 @@ export const fetchSections = createServerFn({ method: 'POST' })
     const query = data.cityRegionCode
       ? `sections?town=${data.townId}&city_region=${encodeURIComponent(data.cityRegionCode)}`
       : `sections?town=${data.townId}`
-    return getJson<PollingSection[]>(query)
+    const rows = await getJson<Array<PollingSection & { voters_count?: number; is_machine?: boolean }>>(query)
+    return rows.map((row) => ({
+      id: String(row.id),
+      place: row.place,
+      votersCount: typeof row.votersCount === 'number' ? row.votersCount : typeof row.voters_count === 'number' ? row.voters_count : null,
+      isMachine: typeof row.isMachine === 'boolean' ? row.isMachine : typeof row.is_machine === 'boolean' ? row.is_machine : null,
+    }))
   })
 
 export const geocodePlace = createServerFn({ method: 'POST' })

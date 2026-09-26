@@ -1,4 +1,5 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
 
 const links = [
   { to: '/signup', label: 'Запиши се' },
@@ -11,6 +12,12 @@ const links = [
 ] as const
 
 export function SiteChrome({ children }: { children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const path = useRouterState({ select: (state) => state.location.pathname })
+  useEffect(() => {
+    setOpen(false)
+  }, [path])
+
   return (
     <>
       <header className="site-header">
@@ -18,15 +25,35 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <Link to="/">
             <img src="/logo-white.png" alt="Ти Броиш" />
           </Link>
-          <nav>
+          <nav className="site-nav">
             {links.map((link) => (
               <Link key={link.to} to={link.to}>
                 {link.label}
               </Link>
             ))}
           </nav>
+          <button
+            type="button"
+            className={open ? 'nav-burger is-open' : 'nav-burger'}
+            aria-label={open ? 'Затвори менюто' : 'Меню'}
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
         </div>
       </header>
+      {open ? (
+        <nav className="mobile-menu" aria-label="Меню">
+          {links.map((link) => (
+            <Link key={link.to} to={link.to} onClick={() => setOpen(false)}>
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
       <main className="mx-auto w-full max-w-lg bg-white px-4 py-8">{children}</main>
       <div className="h-10 bg-[#38decb]" />
       <footer className="bg-[#eee] text-[#333]">
