@@ -12,18 +12,14 @@ const links = [
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <header className="sticky top-0 z-20 bg-[#38decb]">
-        <div className="mx-auto flex max-w-lg flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-          <Link to="/" className="shrink-0">
-            <img src="/logo-white.png" alt="Ти Броиш" className="h-10 w-auto" />
+      <header className="site-header">
+        <div className="site-header-inner">
+          <Link to="/">
+            <img src="/logo-white.png" alt="Ти Броиш" />
           </Link>
-          <nav className="flex flex-wrap items-center">
+          <nav>
             {links.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className="px-2 py-2 text-base font-bold text-white no-underline hover:text-[#eee] aria-[current=page]:underline"
-              >
+              <Link key={link.to} to={link.to}>
                 {link.label}
               </Link>
             ))}
