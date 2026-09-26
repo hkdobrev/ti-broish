@@ -1,7 +1,8 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
 import { PageIntro } from '../components/SiteChrome'
 import { EXPERIENCE, placeLabel, radiusOptions } from '../signup/model'
-import { updateProfile, useProfile } from '../signup/store'
+import { ensureInviteCode, updateProfile, useProfile } from '../signup/store'
 
 export const Route = createFileRoute('/profil')({ component: ProfilePage })
 
@@ -21,6 +22,11 @@ function ProfilePage() {
 
   const experience = EXPERIENCE.find((item) => item.id === profile.experience)
   const radius = radiusOptions(profile.place).find((item) => item.id === profile.radius)
+  const [inviteLink, setInviteLink] = useState('')
+  useEffect(() => {
+    if (!profile.emailConfirmed) return
+    setInviteLink(`${window.location.origin}/pokana/${ensureInviteCode(profile)}`)
+  }, [profile])
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -60,9 +66,10 @@ function ProfilePage() {
       <p className="text-sm leading-6">
         Ако имаш по-малко опит и свободни места, или опит без кола, можем по-късно да те съчетаем с човек, който допълва профила ти. Това още не е конкретен човек.
       </p>
-      {profile.inviteCode ? (
-        <p>
-          Покана за хора, с които се познавате: <strong>{profile.inviteCode}</strong>
+      {inviteLink ? (
+        <p className="break-all text-sm leading-6">
+          Линк за хора, с които се познавате: {inviteLink}
+          {profile.joinedInvite ? ` Влязъл си с покана ${profile.joinedInvite}.` : ''}
         </p>
       ) : null}
       {profile.companions.length > 0 ? (

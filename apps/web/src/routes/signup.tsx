@@ -28,8 +28,22 @@ export const Route = createFileRoute('/signup')({
 })
 
 const button = 'brand-button disabled:opacity-40'
-const ghost = 'min-h-11 rounded-full border border-[var(--line)] bg-white px-5 font-bold'
-const field = 'min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3'
+const ghost = 'min-h-11 rounded-[20px] border border-[#ddd] bg-white px-5 font-bold text-[#333]'
+const field = 'min-h-11 w-full rounded-xl border border-[#ddd] bg-white px-3'
+
+const STEP_LABELS: Record<StepId, string> = {
+  contact: 'Контакт',
+  confirm: 'Имейл',
+  role: 'Роля',
+  rounds: 'Турове',
+  experience: 'Опит',
+  place: 'Място',
+  radius: 'Обхват',
+  seats: 'Кола',
+  action: 'Риск',
+  people: 'Хора',
+  review: 'Преглед',
+}
 
 function SignupPage() {
   const { step } = Route.useSearch()
@@ -72,8 +86,18 @@ function SignupPage() {
       <p className="text-center text-sm font-bold text-[#888]">
         Стъпка {index + 1} от {steps.length}
       </p>
-      <div className="mt-2 mb-6 h-2 overflow-hidden bg-[#eee]">
-        <div className="h-full bg-[#38decb]" style={{ width: `${((index + 1) / steps.length) * 100}%` }} />
+      <div className="mt-3 mb-6 flex flex-wrap justify-center gap-2">
+        {steps.map((item, itemIndex) => (
+          <button
+            key={item}
+            type="button"
+            disabled={itemIndex > index}
+            onClick={() => itemIndex < index && go(item)}
+            className={`rounded-[20px] px-3 py-1 text-xs font-bold ${item === current ? 'bg-[#38decb] text-white' : 'bg-[#eee] text-[#333] disabled:opacity-40'}`}
+          >
+            {STEP_LABELS[item]}
+          </button>
+        ))}
       </div>
       <h1 className="mb-4 text-center text-3xl font-black text-[#444]">{titles[current]}</h1>
       {current === 'contact' ? <Contact error={error} onError={setError} onNext={() => go(profile.emailConfirmed ? 'role' : 'confirm')} /> : null}
@@ -115,6 +139,7 @@ function Contact({ error, onError, onNext }: { error: string; onError: (value: s
         onNext()
       }}
     >
+      <LegalNotice />
       <NameFields />
       <label className="grid gap-1 text-sm font-semibold">
         Имейл
@@ -161,6 +186,7 @@ function Confirm({ error, onError, onNext }: { error: string; onError: (value: s
         <p className="text-sm text-[var(--ink-soft)]">От: Ти Броиш · До: {profile.email}</p>
         <h2 className="mt-2 text-xl font-extrabold">Потвърди имейла, преди да продължиш</h2>
         <p className="mt-2 leading-7">Кодът за този прототип е {expected}. В понеделник ще идва в истинско писмо, за да спрем ботовете и да няма усещане, че формулярът сам по себе си е край.</p>
+        <LegalNotice />
         <button
           type="button"
           className={`${button} mt-3`}
@@ -451,9 +477,25 @@ function People({
   }, [profile])
 
   function add(mode: Companion['mode']) {
-    if (mode === 'invite' && !validEmail(companion.email) && !companion.email) return
-    if (mode === 'full' && (!validName(companion.firstName) || !validEmail(companion.email))) return
-    updateProfile({ companions: [...profile.companions, { ...companion, mode, id: crypto.randomUUID() }] })
+    if (mode === 'invite') {
+      if (!validEmail(companion.email)) return
+      updateProfile({ companions: [...profile.companions, { ...blankCompanion(), mode, email: companion.email.trim(), id: crypto.randomUUID() }] })
+      setCompanion(blankCompanion())
+      return
+    }
+    if (!validName(companion.firstName) || !validName(companion.middleName) || !validName(companion.lastName) || !validEmail(companion.email) || !validPhone(companion.phone)) return
+    if (!companion.samePlace && (!companion.role || !companion.experience)) return
+    const filled: Companion = companion.samePlace
+      ? {
+          ...companion,
+          mode,
+          role: profile.role,
+          mobileTeam: profile.mobileTeam,
+          rounds: profile.rounds,
+          experience: profile.experience,
+        }
+      : { ...companion, mode }
+    updateProfile({ companions: [...profile.companions, { ...filled, id: crypto.randomUUID() }] })
     setCompanion(blankCompanion())
   }
 
@@ -463,6 +505,9 @@ function People({
       <article className="rounded-2xl border border-[var(--line)] bg-white p-4">
         <h2 className="font-extrabold">Линк</h2>
         <p className="mt-2 break-all text-sm">{link || 'Линкът се появява в браузъра.'}</p>
+        <button type="button" className={`${ghost} mt-3`} onClick={() => link && void navigator.clipboard.writeText(link)}>
+          Копирай линка
+        </button>
         <label className="mt-3 grid gap-1 text-sm font-semibold">
           Или само имейл
           <input className={field} value={companion.mode === 'invite' ? companion.email : ''} onChange={(event) => setCompanion({ ...blankCompanion(), mode: 'invite', email: event.target.value })} />
@@ -481,8 +526,44 @@ function People({
           <input className={field} placeholder="Телефон" value={companion.phone} onChange={(event) => setCompanion({ ...companion, phone: event.target.value })} />
           <label className="flex gap-2 text-sm">
             <input type="checkbox" checked={companion.samePlace} onChange={(event) => setCompanion({ ...companion, samePlace: event.target.checked })} />
-            Същите място, тур и роля като мен
+            Същите място, тур, роля и опит като мен
           </label>
+          {!companion.samePlace ? (
+            <div className="grid gap-2 rounded-xl bg-[#f7f7f7] p-3">
+              <p className="text-sm">Те пак потвърждават своя имейл. Тук избираш вместо тях.</p>
+              <label className="grid gap-1 text-sm font-semibold">
+                Роля
+                <select className={field} value={companion.role ?? ''} onChange={(event) => setCompanion({ ...companion, role: (event.target.value || null) as Role | null })}>
+                  <option value="">Избери</option>
+                  <option value="section">Секция</option>
+                  <option value="video">Видеонаблюдение от вкъщи</option>
+                </select>
+              </label>
+              {companion.role === 'section' ? (
+                <label className="flex gap-2 text-sm">
+                  <input type="checkbox" checked={companion.mobileTeam} onChange={(event) => setCompanion({ ...companion, mobileTeam: event.target.checked })} />
+                  И мобилен рисков екип
+                </label>
+              ) : null}
+              <label className="flex gap-2 text-sm">
+                <input type="checkbox" checked={companion.rounds.first} onChange={(event) => setCompanion({ ...companion, rounds: { ...companion.rounds, first: event.target.checked } })} />
+                25 октомври
+              </label>
+              <label className="flex gap-2 text-sm">
+                <input type="checkbox" checked={companion.rounds.runoff} onChange={(event) => setCompanion({ ...companion, rounds: { ...companion.rounds, runoff: event.target.checked } })} />
+                1 ноември
+              </label>
+              <label className="grid gap-1 text-sm font-semibold">
+                Опит
+                <select className={field} value={companion.experience ?? ''} onChange={(event) => setCompanion({ ...companion, experience: (event.target.value || null) as Experience | null })}>
+                  <option value="">Избери</option>
+                  {EXPERIENCE.map((item) => (
+                    <option key={item.id} value={item.id}>{item.title}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
         </div>
         <button type="button" className={`${ghost} mt-3`} onClick={() => add('full')}>
           Добави човека
@@ -538,7 +619,11 @@ function Review({ error, onError }: { error: string; onError: (value: string) =>
             <li>{profile.carSeats} свободни места</li>
           </>
         ) : null}
-        <li>{profile.companions.length} други хора</li>
+        <li>
+          {profile.companions.length === 0
+            ? 'Без други хора'
+            : profile.companions.map((person) => (person.mode === 'full' ? `${person.firstName} ${person.lastName}` : person.email)).join(', ')}
+        </li>
       </ul>
       <p className="leading-7">Хартиените секции са с предимство. Машинна секция се използва само ако за населеното място вече има твърде много записани.</p>
       <label className="flex items-start gap-3 rounded-2xl bg-white px-4 py-4 leading-7">
@@ -553,6 +638,14 @@ function Review({ error, onError }: { error: string; onError: (value: string) =>
         Запиши ме
       </button>
     </form>
+  )
+}
+
+function LegalNotice() {
+  return (
+    <p className="rounded-xl bg-[#eee] px-3 py-3 text-sm leading-6 text-[#333]">
+      Това е доброволна дейност без заплащане. Ще бъдете представител на Инициативния комитет за президентската двойка Андрей Гюров и Георги Кандев.
+    </p>
   )
 }
 
