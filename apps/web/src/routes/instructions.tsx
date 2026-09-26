@@ -31,7 +31,7 @@ function InstructionsPage() {
         ))}
       </ul>
       <p>
-        Още не си записан? <Link to="/signup">Запиши се</Link>
+        Още не си записан? <Link to="/signup" search={{ step: 'contact' }}>Запиши се</Link>
       </p>
     </article>
   )

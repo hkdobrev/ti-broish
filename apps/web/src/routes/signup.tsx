@@ -9,6 +9,7 @@ import {
   placeLabel,
   placeReady,
   radiusOptions,
+  roleLabel,
   stepsFor,
   validEmail,
   validName,
@@ -227,8 +228,8 @@ function RoleStep({ error, onError, onNext }: { error: string; onError: (value: 
       className="grid gap-3"
       onSubmit={(event) => {
         event.preventDefault()
-        if (!profile.role) {
-          onError('Избери път.')
+        if (profile.role !== 'section' && profile.role !== 'mobile') {
+          onError('Избери секция или мобилен рисков екип.')
           return
         }
         onNext()
@@ -238,19 +239,13 @@ function RoleStep({ error, onError, onNext }: { error: string; onError: (value: 
         selected={profile.role === 'section'}
         title="В секция"
         text="Това е за предпочитане. Хартиените секции са с предимство. Машинна секция се ползва само ако за населеното място вече има твърде много записани. Ти не избираш кое от двете."
-        onClick={() => updateProfile({ role: 'section' })}
+        onClick={() => updateProfile({ role: 'section', mobileTeam: false })}
       />
-      {profile.role === 'section' ? (
-        <label className="flex items-start gap-3 rounded-2xl bg-white px-4 py-3">
-          <input type="checkbox" className="mt-1" checked={profile.mobileTeam} onChange={(event) => updateProfile({ mobileTeam: event.target.checked })} />
-          <span>Искам и мобилен рисков екип. Мястото си остава. Екипът покрива рискови места и не е вързан за една секция.</span>
-        </label>
-      ) : null}
       <Choice
-        selected={profile.role === 'video'}
-        title="Видеонаблюдение от вкъщи"
-        text="По-кратък път, без карта, кола и мобилен екип."
-        onClick={() => updateProfile({ role: 'video', mobileTeam: false })}
+        selected={profile.role === 'mobile'}
+        title="Мобилен рисков екип"
+        text="Покриваш рискови места и не си вързан за една секция. Пак избираш къде можеш да бъдеш."
+        onClick={() => updateProfile({ role: 'mobile', mobileTeam: true })}
       />
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
       <button className={button} type="submit">
@@ -533,18 +528,19 @@ function People({
               <p className="text-sm">Те пак потвърждават своя имейл. Тук избираш вместо тях.</p>
               <label className="grid gap-1 text-sm font-semibold">
                 Роля
-                <select className={field} value={companion.role ?? ''} onChange={(event) => setCompanion({ ...companion, role: (event.target.value || null) as Role | null })}>
+                <select
+                  className={field}
+                  value={companion.role === 'mobile' ? 'mobile' : companion.role === 'section' ? 'section' : ''}
+                  onChange={(event) => {
+                    const role = (event.target.value || null) as Role | null
+                    setCompanion({ ...companion, role, mobileTeam: role === 'mobile' })
+                  }}
+                >
                   <option value="">Избери</option>
                   <option value="section">Секция</option>
-                  <option value="video">Видеонаблюдение от вкъщи</option>
+                  <option value="mobile">Мобилен рисков екип</option>
                 </select>
               </label>
-              {companion.role === 'section' ? (
-                <label className="flex gap-2 text-sm">
-                  <input type="checkbox" checked={companion.mobileTeam} onChange={(event) => setCompanion({ ...companion, mobileTeam: event.target.checked })} />
-                  И мобилен рисков екип
-                </label>
-              ) : null}
               <label className="flex gap-2 text-sm">
                 <input type="checkbox" checked={companion.rounds.first} onChange={(event) => setCompanion({ ...companion, rounds: { ...companion.rounds, first: event.target.checked } })} />
                 25 октомври
@@ -607,7 +603,7 @@ function Review({ error, onError }: { error: string; onError: (value: string) =>
         <li>
           {profile.email} · {profile.phone}
         </li>
-        <li>{profile.role === 'video' ? 'Видеонаблюдение от вкъщи' : `Секция${profile.mobileTeam ? ' и мобилен рисков екип' : ''}`}</li>
+        <li>{roleLabel(profile.role, profile.mobileTeam)}</li>
         <li>
           {profile.rounds.first ? '25 октомври' : ''} {profile.rounds.runoff ? '1 ноември' : ''}
         </li>

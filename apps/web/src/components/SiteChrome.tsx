@@ -70,7 +70,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           <div>
             <h2 className="text-base font-bold text-[#333]">Карта на сайта</h2>
             <div className="mt-2 grid">
-              <Link to="/signup" className="py-1 font-bold text-[#333] no-underline">
+              <Link to="/signup" search={{ step: 'contact' }} className="py-1 font-bold text-[#333] no-underline">
                 Запиши се
               </Link>
               <Link to="/instructions" className="py-1 font-bold text-[#333] no-underline">

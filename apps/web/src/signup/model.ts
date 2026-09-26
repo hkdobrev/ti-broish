@@ -1,4 +1,4 @@
-export type Role = 'section' | 'video'
+export type Role = 'section' | 'mobile' | 'video'
 
 export type Radius = 'cityRegion' | 'settlement' | 'municipality' | 'region' | 'distant'
 
@@ -113,6 +113,12 @@ export type StepId = (typeof SECTION_STEPS)[number]
 
 export function stepsFor(role: Role | null): readonly StepId[] {
   return role === 'video' ? VIDEO_STEPS : SECTION_STEPS
+}
+
+export function roleLabel(role: Role | null, mobileTeam = false) {
+  if (role === 'mobile' || mobileTeam) return 'Мобилен рисков екип'
+  if (role === 'video') return 'Видеонаблюдение от вкъщи'
+  return 'Секция'
 }
 
 export function codeFor(email: string) {

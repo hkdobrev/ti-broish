@@ -12,18 +12,17 @@ function HomePage() {
         lede="Запиши се днес. Потвърди имейла си още в началото, после виж статуса в профила. Разпределението идва по-късно, с дата и място."
       />
       <div className="mb-10 flex flex-wrap justify-center gap-3">
-        <Link to="/signup" className="brand-button">
+        <Link to="/signup" search={{ step: 'contact' }} className="brand-button">
           Запиши се
         </Link>
         <Link to="/about" className="brand-button">
           За кампанията
         </Link>
       </div>
-      <section className="grid gap-6 text-left md:grid-cols-3">
+      <section className="grid gap-6 text-left md:grid-cols-2">
         {[
           ['В секция', 'Това е за предпочитане. Хартиените секции са първи. Машинна секция се ползва само ако за населеното място вече има твърде много хора. Ти не избираш кое от двете.'],
-          ['Мобилен рисков екип', 'Можеш да го добавиш към секцията. Мястото си остава. Екипът покрива рискови места и не е вързан за една секция.'],
-          ['Видеонаблюдение от вкъщи', 'По-кратък път, ако не можеш да отидеш на място. Без карта и без кола.'],
+          ['Мобилен рисков екип', 'Покриваш рискови места и не си вързан за една секция. Пак казваш къде можеш да бъдеш.'],
         ].map(([title, text]) => (
           <article key={title}>
             <h2 className="text-xl font-bold">{title}</h2>

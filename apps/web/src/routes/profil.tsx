@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { PageIntro } from '../components/SiteChrome'
-import { EXPERIENCE, placeLabel, radiusOptions } from '../signup/model'
+import { EXPERIENCE, placeLabel, radiusOptions, roleLabel } from '../signup/model'
 import { ensureInviteCode, updateProfile, useProfile } from '../signup/store'
 
 export const Route = createFileRoute('/profil')({ component: ProfilePage })
@@ -13,7 +13,7 @@ function ProfilePage() {
     return (
       <div>
         <PageIntro title="Още нямаш профил" lede="Запиши се и потвърди имейла. После профилът те държи вписан на този браузър." />
-        <Link to="/signup" className="brand-button">
+        <Link to="/signup" search={{ step: 'contact' }} className="brand-button">
           Запиши се
         </Link>
       </div>
@@ -51,7 +51,7 @@ function ProfilePage() {
         <p>{profile.firstName} {profile.middleName} {profile.lastName}</p>
         <p>{profile.email}</p>
         <p>{profile.phone}</p>
-        <p>{profile.role === 'video' ? 'Видеонаблюдение от вкъщи' : 'Секция'}{profile.mobileTeam ? ' и мобилен рисков екип' : ''}</p>
+        <p>{roleLabel(profile.role, profile.mobileTeam)}</p>
         <p>{profile.rounds.first ? 'Първи тур' : ''} {profile.rounds.runoff ? 'Балотаж' : ''}</p>
         <p>{experience?.title}</p>
         {profile.role !== 'video' ? (

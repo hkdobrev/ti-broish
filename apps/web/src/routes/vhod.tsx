@@ -37,7 +37,7 @@ function LoginPage() {
       ) : null}
       {sent && !matches ? (
         <p className="mt-4">
-          Няма потвърден профил с този имейл на този браузър. <Link to="/signup">Запиши се</Link>
+          Няма потвърден профил с този имейл на този браузър. <Link to="/signup" search={{ step: 'contact' }}>Запиши се</Link>
         </p>
       ) : null}
     </div>
