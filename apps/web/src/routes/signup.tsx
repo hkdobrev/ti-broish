@@ -1,11 +1,12 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { BulgariaMap } from '../components/BulgariaMap'
 import { PlacesPicker } from '../components/PlacesPicker'
-import { RadiusMap } from '../components/RadiusMap'
 import { OBLASTS } from '../signup/oblasts'
 import {
   EXPERIENCE,
   codeFor,
+  highlightCodes,
   placeLabel,
   placeReady,
   radiusOptions,
@@ -41,7 +42,6 @@ const STEP_LABELS: Record<StepId, string> = {
   place: 'Място',
   radius: 'Обхват',
   seats: 'Кола',
-  action: 'Риск',
   people: 'Хора',
   review: 'Преглед',
 }
@@ -75,7 +75,6 @@ function SignupPage() {
     place: 'Къде е твоето място',
     radius: 'Докъде можеш да стигнеш',
     seats: 'Свободни места в колата',
-    action: 'Рискови места',
     people: 'Други хора',
     review: 'Преглед преди записа',
   }
@@ -109,7 +108,6 @@ function SignupPage() {
       {current === 'place' ? <PlaceStep error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'radius' ? <RadiusStep error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'seats' ? <Seats onNext={nextStep} /> : null}
-      {current === 'action' ? <Action onNext={nextStep} /> : null}
       {current === 'people' ? <People companion={companion} setCompanion={setCompanion} onNext={nextStep} /> : null}
       {current === 'review' ? <Review error={error} onError={setError} /> : null}
       {index > 0 ? (
@@ -144,11 +142,11 @@ function Contact({ error, onError, onNext }: { error: string; onError: (value: s
       <NameFields />
       <label className="grid gap-1 text-sm font-semibold">
         Имейл
-        <input className={field} inputMode="email" value={profile.email} onChange={(event) => updateProfile({ email: event.target.value, emailConfirmed: false })} />
+        <input className={field} inputMode="email" autoComplete="email" value={profile.email} onChange={(event) => updateProfile({ email: event.target.value, emailConfirmed: false })} />
       </label>
       <label className="grid gap-1 text-sm font-semibold">
         Телефон
-        <input className={field} inputMode="tel" placeholder="08xxxxxxxx" value={profile.phone} onChange={(event) => updateProfile({ phone: event.target.value })} />
+        <input className={field} inputMode="tel" autoComplete="tel" placeholder="08xxxxxxxx" value={profile.phone} onChange={(event) => updateProfile({ phone: event.target.value })} />
       </label>
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
       <button className={button} type="submit">
@@ -161,16 +159,16 @@ function Contact({ error, onError, onNext }: { error: string; onError: (value: s
 function NameFields() {
   const { profile } = useProfile()
   const fields = [
-    ['firstName', 'Име'],
-    ['middleName', 'Презиме'],
-    ['lastName', 'Фамилия'],
+    ['firstName', 'Име', 'given-name'],
+    ['middleName', 'Презиме', 'additional-name'],
+    ['lastName', 'Фамилия', 'family-name'],
   ] as const
   return (
     <>
-      {fields.map(([key, label]) => (
+      {fields.map(([key, label, autoComplete]) => (
         <label key={key} className="grid gap-1 text-sm font-semibold">
           {label}
-          <input className={field} value={profile[key]} onChange={(event) => updateProfile({ [key]: event.target.value })} />
+          <input className={field} autoComplete={autoComplete} value={profile[key]} onChange={(event) => updateProfile({ [key]: event.target.value })} />
         </label>
       ))}
     </>
@@ -244,7 +242,7 @@ function RoleStep({ error, onError, onNext }: { error: string; onError: (value: 
       <Choice
         selected={profile.role === 'mobile'}
         title="Мобилен рисков екип"
-        text="Покриваш рискови места и не си вързан за една секция. Пак избираш къде можеш да бъдеш."
+        text="Рисковите места са този екип. Не си вързан за една секция и пак избираш къде можеш да бъдеш."
         onClick={() => updateProfile({ role: 'mobile', mobileTeam: true })}
       />
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
@@ -335,7 +333,8 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
         onNext()
       }}
     >
-      <p>Едно основно място, колкото може по-точно: област, община, населено място и секция, ако имаш.</p>
+      <p>Едно основно място, колкото може по-точно: област, община, населено място и секция, ако имаш. Ако в списъка има само един избор, той се попълва сам.</p>
+      <BulgariaMap regionCodes={highlightCodes(profile.place, null, [])} />
       <PlacesPicker value={profile.place} onChange={(place) => updateProfile({ place, radius: null, distantRegionCodes: [] })} />
       <p className="text-sm leading-6">Списъците идват от api.tibroish.bg и са от последните избори, докато излезе списъкът за президентския вот.</p>
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
@@ -349,13 +348,7 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
 function RadiusStep({ error, onError, onNext }: { error: string; onError: (value: string) => void; onNext: () => void }) {
   const { profile } = useProfile()
   const options = radiusOptions(profile.place)
-  const highlighted = useMemo(() => {
-    const home = profile.place?.regionCode
-    if (!home || home === '32' || home === 'sofia-merged') {
-      return home === 'sofia-merged' ? ['23', ...(profile.radius === 'distant' ? profile.distantRegionCodes : [])] : profile.distantRegionCodes
-    }
-    return [home, ...(profile.radius === 'distant' ? profile.distantRegionCodes : [])]
-  }, [profile.place, profile.radius, profile.distantRegionCodes])
+  const highlighted = highlightCodes(profile.place, profile.radius, profile.distantRegionCodes)
 
   return (
     <form
@@ -373,7 +366,7 @@ function RadiusStep({ error, onError, onNext }: { error: string; onError: (value
         onNext()
       }}
     >
-      <RadiusMap
+      <BulgariaMap
         regionCodes={highlighted}
         interactive={profile.radius === 'distant' && profile.place?.regionCode !== '32'}
         onToggle={(code) => {
@@ -428,27 +421,6 @@ function Seats({ onNext }: { onNext: () => void }) {
           +
         </button>
       </div>
-      <button className={button} type="submit">
-        Напред
-      </button>
-    </form>
-  )
-}
-
-function Action({ onNext }: { onNext: () => void }) {
-  const { profile } = useProfile()
-  return (
-    <form
-      className="grid gap-4"
-      onSubmit={(event) => {
-        event.preventDefault()
-        onNext()
-      }}
-    >
-      <label className="flex items-start gap-3 rounded-2xl bg-white px-4 py-4">
-        <input type="checkbox" className="mt-1" checked={profile.wantsAction} onChange={(event) => updateProfile({ wantsAction: event.target.checked })} />
-        <span>Искам рискови места с повече екшън. Това е отделно от мобилния екип.</span>
-      </label>
       <button className={button} type="submit">
         Напред
       </button>

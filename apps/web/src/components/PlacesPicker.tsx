@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   apiRegionCodes,
   displayRegions,
@@ -29,6 +29,10 @@ export function PlacesPicker({
   const [sections, setSections] = useState<PollingSection[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const onChangeRef = useRef(onChange)
+  const autoTownFor = useRef<string | null>(null)
+  const autoSectionFor = useRef<string | null>(null)
+  onChangeRef.current = onChange
 
   useEffect(() => {
     void fetchRegions()
@@ -52,9 +56,18 @@ export function PlacesPicker({
       setTowns([])
       return
     }
+    let cancelled = false
+    setTowns([])
     void fetchTowns({ data: { regionCodes: apiRegionCodes(region), municipalityCode: value.municipalityCode } })
-      .then((data) => setTowns(data))
-      .catch(() => setError('Не успяхме да заредим населените места.'))
+      .then((data) => {
+        if (!cancelled) setTowns(data)
+      })
+      .catch(() => {
+        if (!cancelled) setError('Не успяхме да заредим населените места.')
+      })
+    return () => {
+      cancelled = true
+    }
   }, [value?.municipalityCode, value?.regionCode, abroad, region])
 
   useEffect(() => {
@@ -66,6 +79,49 @@ export function PlacesPicker({
       .then((data) => setSections(data))
       .catch(() => setSections([]))
   }, [value?.townId, value?.cityRegionCode, abroad])
+
+  useEffect(() => {
+    if (!region || abroad || value?.municipalityCode) return
+    const list = region.municipalities ?? []
+    if (list.length !== 1) return
+    const municipality = list[0]
+    if (!municipality) return
+    onChangeRef.current({
+      regionCode: region.code,
+      regionName: region.name,
+      municipalityCode: municipality.code,
+      municipalityName: municipality.name,
+    })
+  }, [abroad, region, value?.municipalityCode])
+
+  useEffect(() => {
+    if (abroad || !value?.municipalityCode || value.townId || towns.length === 0) return
+    if (autoTownFor.current === value.municipalityCode) return
+    autoTownFor.current = value.municipalityCode
+    const pick = pickTown(towns)
+    if (!pick) return
+    const district = pick.cityRegions.length === 1 ? pick.cityRegions[0] : undefined
+    onChangeRef.current({
+      regionCode: value.regionCode,
+      regionName: value.regionName,
+      municipalityCode: value.municipalityCode,
+      municipalityName: value.municipalityName,
+      townId: pick.id,
+      townName: pick.name,
+      cityRegionCode: district?.code,
+      cityRegionName: district?.name,
+    })
+  }, [abroad, towns, value?.municipalityCode, value?.municipalityName, value?.regionCode, value?.regionName, value?.townId])
+
+  useEffect(() => {
+    if (!value?.townId || value.sectionId || sections.length !== 1) return
+    const sectionKey = `${value.townId}:${value.cityRegionCode ?? ''}`
+    if (autoSectionFor.current === sectionKey) return
+    autoSectionFor.current = sectionKey
+    const section = sections[0]
+    if (!section) return
+    onChangeRef.current({ ...value, sectionId: section.id, sectionPlace: section.place })
+  }, [sections, value])
 
   function setRegion(code: string) {
     const next = regions.find((item) => item.code === code)
@@ -232,7 +288,7 @@ export function PlacesPicker({
             }}
           >
             <option value="">Без конкретна секция</option>
-            {sections.map((item) => (
+            {[...sections].sort(compareSections).map((item) => (
               <option key={item.id} value={item.id}>
                 {item.place}
               </option>
@@ -246,4 +302,27 @@ export function PlacesPicker({
       </p>
     </div>
   )
+}
+
+function pickTown(towns: Town[]) {
+  if (towns.length === 1) return towns[0] ?? null
+  const withDistricts = towns.filter((town) => town.cityRegions.length > 1)
+  if (withDistricts.length === 1) return withDistricts[0] ?? null
+  if (withDistricts.length > 1) {
+    return withDistricts.reduce((best, town) => (town.cityRegions.length >= best.cityRegions.length ? town : best))
+  }
+  const cities = towns.filter((town) => town.name.startsWith('гр.'))
+  if (cities.length === 1) return cities[0] ?? null
+  return null
+}
+
+function compareSections(a: PollingSection, b: PollingSection) {
+  const numA = a.place.match(/^\d+/)
+  const numB = b.place.match(/^\d+/)
+  if (numA && numB) {
+    const diff = Number.parseInt(numA[0], 10) - Number.parseInt(numB[0], 10)
+    if (diff !== 0) return diff
+  } else if (numA) return -1
+  else if (numB) return 1
+  return a.place.localeCompare(b.place, 'bg')
 }

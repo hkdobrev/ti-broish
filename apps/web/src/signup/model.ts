@@ -102,7 +102,6 @@ export const SECTION_STEPS = [
   'place',
   'radius',
   'seats',
-  'action',
   'people',
   'review',
 ] as const
@@ -113,6 +112,13 @@ export type StepId = (typeof SECTION_STEPS)[number]
 
 export function stepsFor(role: Role | null): readonly StepId[] {
   return role === 'video' ? VIDEO_STEPS : SECTION_STEPS
+}
+
+export function highlightCodes(place: HomePlace | null, radius: Radius | null, distant: string[]) {
+  if (!place || place.regionCode === '32') return []
+  const home = place.regionCode === 'sofia-merged' ? ['23', '24', '25'] : [place.regionCode]
+  if (radius !== 'distant') return home
+  return [...home, ...distant.filter((code) => !home.includes(code))]
 }
 
 export function roleLabel(role: Role | null, mobileTeam = false) {

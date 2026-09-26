@@ -8,6 +8,13 @@ export const Route = createFileRoute('/profil')({ component: ProfilePage })
 
 function ProfilePage() {
   const { profile, ready } = useProfile()
+  const [inviteLink, setInviteLink] = useState('')
+  useEffect(() => {
+    if (!profile.emailConfirmed) return
+    const code = profile.inviteCode || ensureInviteCode(profile)
+    setInviteLink(`${window.location.origin}/pokana/${code}`)
+  }, [profile.emailConfirmed, profile.inviteCode])
+
   if (!ready) return <p>Зареждаме профила…</p>
   if (!profile.email) {
     return (
@@ -22,11 +29,6 @@ function ProfilePage() {
 
   const experience = EXPERIENCE.find((item) => item.id === profile.experience)
   const radius = radiusOptions(profile.place).find((item) => item.id === profile.radius)
-  const [inviteLink, setInviteLink] = useState('')
-  useEffect(() => {
-    if (!profile.emailConfirmed) return
-    setInviteLink(`${window.location.origin}/pokana/${ensureInviteCode(profile)}`)
-  }, [profile])
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -59,7 +61,6 @@ function ProfilePage() {
             <p>{placeLabel(profile.place)}</p>
             <p>{radius?.label}</p>
             <p>Свободни места в колата: {profile.carSeats}</p>
-            <p>{profile.wantsAction ? 'Иска рискови места с повече екшън.' : 'Без предпочитание за рискови места.'}</p>
           </>
         ) : null}
       </section>
