@@ -2,6 +2,7 @@ import { useEffect, useState, type ComponentType } from 'react'
 
 type MapProps = {
   regionCodes: string[]
+  focus?: { lat: number; lng: number; zoom: number } | null
   interactive?: boolean
   onToggle?: (regionCode: string) => void
 }

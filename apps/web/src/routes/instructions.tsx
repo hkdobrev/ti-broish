@@ -12,7 +12,6 @@ function InstructionsPage() {
   return (
     <article className="max-w-3xl space-y-4 text-base leading-7">
       <PageIntro
-        kicker="Инструкции"
         title="Преди да влезеш в секцията"
         lede="Материалите за тези президентски избори още се подготвят. Дотогава важат правилата от досегашните кампании."
       />

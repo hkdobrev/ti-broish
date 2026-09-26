@@ -31,7 +31,7 @@ function ProfilePage() {
   const radius = radiusOptions(profile.place).find((item) => item.id === profile.radius)
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="grid gap-4">
       <PageIntro title={`${profile.firstName}, това е профилът ти`} lede="Профилът е отворен на този браузър. От телефона си влизаш със същия линк, когато имейлите тръгнат." />
       {profile.withdrawn ? (
         <p className="rounded-2xl bg-[#fff4f4] px-4 py-3">Записването е оттеглено. Мястото се освобождава. Можеш да се запишеш пак.</p>

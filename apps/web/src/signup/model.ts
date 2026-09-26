@@ -100,7 +100,6 @@ export const SECTION_STEPS = [
   'rounds',
   'experience',
   'place',
-  'radius',
   'seats',
   'people',
   'review',
@@ -112,6 +111,32 @@ export type StepId = (typeof SECTION_STEPS)[number]
 
 export function stepsFor(role: Role | null): readonly StepId[] {
   return role === 'video' ? VIDEO_STEPS : SECTION_STEPS
+}
+
+export function mapZoom(place: HomePlace | null, radius: Radius | null) {
+  if (!place) return null
+  if (radius === 'region' || radius === 'distant') return null
+  if (radius === 'cityRegion' && place.townName) return 14
+  if (radius === 'settlement' && place.townName) return 13
+  if (radius === 'municipality' && place.municipalityName) return 11
+  if (place.townName) return 13
+  if (place.municipalityName) return 11
+  return null
+}
+
+export function mapQuery(place: HomePlace | null, radius: Radius | null) {
+  if (!place) return null
+  if (place.regionCode === '32') {
+    const query = [place.townName, place.countryName].filter(Boolean).join(', ')
+    return query || null
+  }
+  if (radius === 'region' || radius === 'distant') return null
+  if ((radius === 'municipality' || !place.townName) && place.municipalityName) {
+    return [`община ${place.municipalityName}`, place.regionName, 'България'].filter(Boolean).join(', ')
+  }
+  if (!place.townName) return null
+  const town = place.townName.replace(/^(гр\.|с\.|к\.|ман\.)\s*/u, '')
+  return [town, place.municipalityName, place.regionName, 'България'].filter(Boolean).join(', ')
 }
 
 export function highlightCodes(place: HomePlace | null, radius: Radius | null, distant: string[]) {

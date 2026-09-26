@@ -6,7 +6,7 @@ export const Route = createFileRoute('/privacy-notice')({ component: PrivacyPage
 function PrivacyPage() {
   return (
     <article className="max-w-3xl space-y-4 text-base leading-7">
-      <PageIntro kicker="Лични данни" title="Декларация за поверителност" />
+      <PageIntro title="Декларация за поверителност" />
       <p>
         Администратор на личните данни за сайта tibroish.bg е ПП „Движение Да България“. Длъжностно лице по защита на данните е Божидар Божанов. Пишете на team@tibroish.bg.
       </p>

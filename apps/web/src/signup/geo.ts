@@ -86,6 +86,28 @@ export const fetchSections = createServerFn({ method: 'POST' })
     return getJson<PollingSection[]>(query)
   })
 
+export const geocodePlace = createServerFn({ method: 'POST' })
+  .validator((input: { query: string; abroad?: boolean }) => input)
+  .handler(async ({ data }) => {
+    const url = new URL('https://nominatim.openstreetmap.org/search')
+    url.searchParams.set('q', data.query)
+    url.searchParams.set('format', 'jsonv2')
+    url.searchParams.set('limit', '1')
+    if (!data.abroad) url.searchParams.set('countrycodes', 'bg')
+    const response = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+        'Accept-Language': 'bg',
+        'User-Agent': 'ti-broish-staging/1.0 (team@tibroish.bg)',
+      },
+    })
+    if (!response.ok) return null
+    const rows = (await response.json()) as Array<{ lat?: string; lon?: string }>
+    const hit = rows[0]
+    if (!hit?.lat || !hit.lon) return null
+    return { lat: Number(hit.lat), lng: Number(hit.lon) }
+  })
+
 export const SOFIA_CODES = ['23', '24', '25']
 
 export function displayRegions(regions: ElectionRegion[]): ElectionRegion[] {

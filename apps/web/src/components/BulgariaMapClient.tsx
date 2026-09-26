@@ -79,24 +79,38 @@ function selectedFeatures(data: FeatureCollection, regionCodes: string[]) {
   }
 }
 
-function FitTo({ data, regionCodes }: { data: FeatureCollection; regionCodes: string[] }) {
+function FitTo({
+  data,
+  regionCodes,
+  focus,
+}: {
+  data: FeatureCollection
+  regionCodes: string[]
+  focus?: { lat: number; lng: number; zoom: number } | null
+}) {
   const map = useMap()
-  const selection = regionCodes.join(',')
+  const selection = `${regionCodes.join(',')}|${focus?.lat ?? ''}|${focus?.lng ?? ''}|${focus?.zoom ?? ''}`
   useEffect(() => {
+    if (focus) {
+      map.flyTo([focus.lat, focus.lng], focus.zoom, { duration: 0.5 })
+      return
+    }
     const chosen = regionCodes.length > 0 ? selectedFeatures(data, regionCodes) : data
     const features = chosen.features.length > 0 ? chosen : data
     const bounds = L.geoJSON(features as GeoJsonObject).getBounds()
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24], maxZoom: 11 })
-  }, [data, map, regionCodes, selection])
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [24, 24], maxZoom: focus ? 14 : 8 })
+  }, [data, focus, map, regionCodes, selection])
   return null
 }
 
 export function BulgariaMapClient({
   regionCodes,
+  focus,
   interactive,
   onToggle,
 }: {
   regionCodes: string[]
+  focus?: { lat: number; lng: number; zoom: number } | null
   interactive?: boolean
   onToggle?: (regionCode: string) => void
 }) {
@@ -116,10 +130,10 @@ export function BulgariaMapClient({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {data ? <FitTo data={data} regionCodes={regionCodes} /> : null}
+        {data ? <FitTo data={data} regionCodes={regionCodes} focus={focus} /> : null}
         {data ? (
           <GeoJSON
-            key={`${regionCodes.join(',')}:${interactive ? '1' : '0'}`}
+            key={`${regionCodes.join(',')}:${interactive ? '1' : '0'}:${focus?.zoom ?? ''}`}
             data={data}
             style={(feature) => {
               const nuts = (feature?.properties as OblastProps | undefined)?.nuts3
@@ -129,7 +143,7 @@ export function BulgariaMapClient({
                 color: '#0e8f82',
                 weight: on ? 2 : 1,
                 fillColor: on ? '#38decb' : '#ffffff',
-                fillOpacity: on ? 0.55 : 0.12,
+                fillOpacity: on ? (focus ? 0.28 : 0.45) : 0.08,
               }
             }}
             onEachFeature={(feature, layer) => {

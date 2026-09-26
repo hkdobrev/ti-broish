@@ -2,11 +2,14 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { BulgariaMap } from '../components/BulgariaMap'
 import { PlacesPicker } from '../components/PlacesPicker'
+import { geocodePlace } from '../signup/geo'
 import { OBLASTS } from '../signup/oblasts'
 import {
   EXPERIENCE,
   codeFor,
   highlightCodes,
+  mapQuery,
+  mapZoom,
   placeLabel,
   placeReady,
   radiusOptions,
@@ -30,7 +33,7 @@ export const Route = createFileRoute('/signup')({
 })
 
 const button = 'brand-button disabled:opacity-40'
-const ghost = 'min-h-11 rounded-[20px] border border-[#ddd] bg-white px-5 font-bold text-[#333]'
+const ghost = 'flex min-h-14 w-full items-center justify-center rounded-[20px] border border-[#ddd] bg-white px-5 text-xl font-bold text-[#333]'
 const field = 'min-h-11 w-full rounded-xl border border-[#ddd] bg-white px-3'
 
 function SignupPage() {
@@ -40,7 +43,8 @@ function SignupPage() {
   const [error, setError] = useState('')
   const [companion, setCompanion] = useState<Companion>(blankCompanion())
   const steps = stepsFor(profile.role)
-  const current = (steps as readonly string[]).includes(step) ? (step as StepId) : 'contact'
+  const requested = step === 'radius' ? 'place' : step
+  const current = (steps as readonly string[]).includes(requested) ? (requested as StepId) : 'contact'
   const index = Math.max(0, steps.indexOf(current as (typeof steps)[number]))
 
   function go(next: StepId) {
@@ -60,7 +64,6 @@ function SignupPage() {
     rounds: 'Кога можеш да участваш',
     experience: 'Колко си подготвен',
     place: 'Къде е твоето място',
-    radius: 'Докъде можеш да стигнеш',
     seats: 'Свободни места в колата',
     people: 'Други хора',
     review: 'Преглед, преди да се запишеш',
@@ -69,15 +72,14 @@ function SignupPage() {
   if (!ready) return <p>Зареждаме данните…</p>
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="mb-4 text-center text-3xl font-black text-[#444]">{titles[current]}</h1>
+    <div className="grid gap-4">
+      <h1 className="text-3xl font-black text-[#444]">{titles[current]}</h1>
       {current === 'contact' ? <Contact error={error} onError={setError} onNext={() => go(profile.emailConfirmed ? 'role' : 'confirm')} /> : null}
       {current === 'confirm' ? <Confirm error={error} onError={setError} onNext={() => go('role')} /> : null}
       {current === 'role' ? <RoleStep error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'rounds' ? <Rounds error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'experience' ? <ExperienceStep error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'place' ? <PlaceStep error={error} onError={setError} onNext={nextStep} /> : null}
-      {current === 'radius' ? <RadiusStep error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'seats' ? <Seats onNext={nextStep} /> : null}
       {current === 'people' ? <People companion={companion} setCompanion={setCompanion} onNext={nextStep} /> : null}
       {current === 'review' ? <Review error={error} onError={setError} /> : null}
@@ -292,6 +294,26 @@ function ExperienceStep({ error, onError, onNext }: { error: string; onError: (v
 
 function PlaceStep({ error, onError, onNext }: { error: string; onError: (value: string) => void; onNext: () => void }) {
   const { profile } = useProfile()
+  const [focus, setFocus] = useState<{ lat: number; lng: number; zoom: number } | null>(null)
+  const options = radiusOptions(profile.place)
+  const highlighted = highlightCodes(profile.place, profile.radius, profile.distantRegionCodes)
+  const query = mapQuery(profile.place, profile.radius)
+  const zoom = mapZoom(profile.place, profile.radius)
+
+  useEffect(() => {
+    if (!query || zoom == null) {
+      setFocus(null)
+      return
+    }
+    let cancelled = false
+    void geocodePlace({ data: { query, abroad: profile.place?.regionCode === '32' } }).then((hit) => {
+      if (!cancelled) setFocus(hit ? { lat: hit.lat, lng: hit.lng, zoom } : null)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [query, zoom, profile.place?.regionCode])
+
   return (
     <form
       className="grid gap-4"
@@ -301,33 +323,8 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
           onError('Избери място до населено място или град в чужбина.')
           return
         }
-        onNext()
-      }}
-    >
-      <p>Едно основно място, колкото може по-точно: област, община, населено място и секция, ако имаш. Ако в списъка има само един избор, той се попълва сам.</p>
-      <BulgariaMap regionCodes={highlightCodes(profile.place, null, [])} />
-      <PlacesPicker value={profile.place} onChange={(place) => updateProfile({ place, radius: null, distantRegionCodes: [] })} />
-      <p className="text-sm leading-6">Списъците идват от api.tibroish.bg и са от последните избори, докато излезе списъкът за президентския вот.</p>
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
-      <button className={button} type="submit">
-        Напред
-      </button>
-    </form>
-  )
-}
-
-function RadiusStep({ error, onError, onNext }: { error: string; onError: (value: string) => void; onNext: () => void }) {
-  const { profile } = useProfile()
-  const options = radiusOptions(profile.place)
-  const highlighted = highlightCodes(profile.place, profile.radius, profile.distantRegionCodes)
-
-  return (
-    <form
-      className="grid gap-4"
-      onSubmit={(event) => {
-        event.preventDefault()
         if (!profile.radius) {
-          onError('Избери докъде стигаш.')
+          onError('Избери докъде можеш да стигнеш.')
           return
         }
         if (profile.radius === 'distant' && profile.place?.regionCode !== '32' && profile.distantRegionCodes.length === 0) {
@@ -339,6 +336,7 @@ function RadiusStep({ error, onError, onNext }: { error: string; onError: (value
     >
       <BulgariaMap
         regionCodes={highlighted}
+        focus={focus}
         interactive={profile.radius === 'distant' && profile.place?.regionCode !== '32'}
         onToggle={(code) => {
           const home = profile.place?.regionCode
@@ -349,19 +347,32 @@ function RadiusStep({ error, onError, onNext }: { error: string; onError: (value
           })
         }}
       />
-      {profile.place?.regionCode === '32' ? <p className="text-sm">Чужбина не се очертава на тази карта.</p> : null}
-      <div className="grid gap-2">
-        {options.map((option) => (
-          <label key={option.id} className="flex gap-3 rounded-2xl bg-white px-4 py-3">
-            <input type="radio" name="radius" checked={profile.radius === option.id} onChange={() => updateProfile({ radius: option.id })} />
-            {option.label}
-          </label>
-        ))}
-      </div>
+      <PlacesPicker
+        value={profile.place}
+        onChange={(place) => {
+          const regionChanged = place?.regionCode !== profile.place?.regionCode
+          updateProfile({
+            place,
+            radius: regionChanged ? null : profile.radius,
+            distantRegionCodes: regionChanged ? [] : profile.distantRegionCodes,
+          })
+        }}
+      />
+      {options.length > 0 ? (
+        <fieldset className="grid gap-2">
+          <legend className="mb-1 text-sm font-semibold">Докъде можеш да стигнеш</legend>
+          {options.map((option) => (
+            <label key={option.id} className="flex gap-3 rounded-2xl bg-white px-4 py-3">
+              <input type="radio" name="radius" checked={profile.radius === option.id} onChange={() => updateProfile({ radius: option.id })} />
+              {option.label}
+            </label>
+          ))}
+        </fieldset>
+      ) : null}
       {profile.radius === 'distant' && profile.place?.regionCode !== '32' ? (
         <p className="text-sm">
-          Избрани други области:{' '}
-          {profile.distantRegionCodes.map((code) => OBLASTS.find((item) => item.regionCodes.includes(code))?.name ?? code).join(', ') || 'няма'}
+          Други области:{' '}
+          {profile.distantRegionCodes.map((code) => OBLASTS.find((item) => item.regionCodes.includes(code))?.name ?? code).join(', ') || 'натисни ги на картата'}
         </p>
       ) : null}
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
@@ -439,10 +450,9 @@ function People({
 
   return (
     <div className="grid gap-4">
-      <p>Можеш да попълниш човека изцяло, все едно записваш семейството, или да пратиш линк и той сам да си попълни.</p>
-      <article className="rounded-2xl border border-[var(--line)] bg-white p-4">
-        <h2 className="font-extrabold">Линк</h2>
-        <p className="mt-2 break-all text-sm">{link || 'Линкът се появява в браузъра.'}</p>
+      <p>Попълни човека, или му прати линк. Той потвърждава своя имейл.</p>
+      <article className="grid gap-3">
+        <p className="break-all text-sm">{link || 'Линкът се появява в браузъра.'}</p>
         <button type="button" className={`${ghost} mt-3`} onClick={() => link && void navigator.clipboard.writeText(link)}>
           Копирай линка
         </button>
@@ -454,9 +464,8 @@ function People({
           Добави имейла
         </button>
       </article>
-      <article className="rounded-2xl border border-[var(--line)] bg-white p-4">
-        <h2 className="font-extrabold">Попълни данните вместо тях</h2>
-        <div className="mt-3 grid gap-2">
+      <article className="grid gap-3">
+        <div className="grid gap-2">
           <input className={field} placeholder="Име" value={companion.firstName} onChange={(event) => setCompanion({ ...companion, mode: 'full', firstName: event.target.value })} />
           <input className={field} placeholder="Презиме" value={companion.middleName} onChange={(event) => setCompanion({ ...companion, middleName: event.target.value })} />
           <input className={field} placeholder="Фамилия" value={companion.lastName} onChange={(event) => setCompanion({ ...companion, lastName: event.target.value })} />
