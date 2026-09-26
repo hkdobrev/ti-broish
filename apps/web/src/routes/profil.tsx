@@ -19,7 +19,7 @@ function ProfilePage() {
   if (!profile.email) {
     return (
       <div>
-        <PageIntro title="Още нямаш профил" lede="Запиши се и потвърди имейла. После профилът те държи вписан на този браузър." />
+        <PageIntro title="Още нямаш профил" lede="Запиши се и потвърди имейла. После профилът остава отворен на този браузър." />
         <Link to="/signup" search={{ step: 'contact' }} className="brand-button">
           Запиши се
         </Link>
@@ -32,14 +32,14 @@ function ProfilePage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <PageIntro title={`${profile.firstName}, това е профилът ти`} lede="Вписан си на този браузър. От телефона си влизаш със същия линк, когато имейлите тръгнат." />
+      <PageIntro title={`${profile.firstName}, това е профилът ти`} lede="Профилът е отворен на този браузър. От телефона си влизаш със същия линк, когато имейлите тръгнат." />
       {profile.withdrawn ? (
-        <p className="rounded-2xl bg-[#fff4f4] px-4 py-3">Записът е оттеглен. Мястото се освобождава. Можеш да се запишеш пак.</p>
+        <p className="rounded-2xl bg-[#fff4f4] px-4 py-3">Записването е оттеглено. Мястото се освобождава. Можеш да се запишеш пак.</p>
       ) : null}
       <ol className="grid gap-2">
         {[
           ['Имейлът е потвърден', profile.emailConfirmed],
-          ['Профилът е записан', profile.submitted && !profile.withdrawn],
+          ['Записването е готово', profile.submitted && !profile.withdrawn],
           ['Разпределението предстои', profile.submitted && !profile.withdrawn],
         ].map(([label, done]) => (
           <li key={String(label)} className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
@@ -54,7 +54,7 @@ function ProfilePage() {
         <p>{profile.email}</p>
         <p>{profile.phone}</p>
         <p>{roleLabel(profile.role, profile.mobileTeam)}</p>
-        <p>{profile.rounds.first ? 'Първи тур' : ''} {profile.rounds.runoff ? 'Балотаж' : ''}</p>
+        <p>{profile.rounds.first ? '25 октомври' : ''} {profile.rounds.runoff ? '1 ноември, балотаж' : ''}</p>
         <p>{experience?.title}</p>
         {profile.role !== 'video' ? (
           <>
@@ -104,7 +104,7 @@ function ProfilePage() {
           className="rounded-full border border-[var(--line)] bg-white px-5 py-3 font-bold"
           onClick={() => updateProfile({ withdrawn: !profile.withdrawn, submitted: profile.withdrawn ? profile.submitted : true })}
         >
-          {profile.withdrawn ? 'Върни записа' : 'Оттегли записа'}
+          {profile.withdrawn ? 'Върни записването' : 'Оттегли записването'}
         </button>
       </div>
       <p className="text-sm leading-6">

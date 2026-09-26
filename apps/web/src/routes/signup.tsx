@@ -33,19 +33,6 @@ const button = 'brand-button disabled:opacity-40'
 const ghost = 'min-h-11 rounded-[20px] border border-[#ddd] bg-white px-5 font-bold text-[#333]'
 const field = 'min-h-11 w-full rounded-xl border border-[#ddd] bg-white px-3'
 
-const STEP_LABELS: Record<StepId, string> = {
-  contact: 'Контакт',
-  confirm: 'Имейл',
-  role: 'Роля',
-  rounds: 'Турове',
-  experience: 'Опит',
-  place: 'Място',
-  radius: 'Обхват',
-  seats: 'Кола',
-  people: 'Хора',
-  review: 'Преглед',
-}
-
 function SignupPage() {
   const { step } = Route.useSearch()
   const navigate = useNavigate()
@@ -70,35 +57,19 @@ function SignupPage() {
     contact: 'Как да се свържем с теб',
     confirm: 'Потвърди имейла си',
     role: 'Как ще пазиш вота',
-    rounds: 'За кои турове се записваш',
+    rounds: 'Кога можеш да участваш',
     experience: 'Колко си подготвен',
     place: 'Къде е твоето място',
     radius: 'Докъде можеш да стигнеш',
     seats: 'Свободни места в колата',
     people: 'Други хора',
-    review: 'Преглед преди записа',
+    review: 'Преглед, преди да се запишеш',
   }
 
-  if (!ready) return <p>Зареждаме записа…</p>
+  if (!ready) return <p>Зареждаме данните…</p>
 
   return (
     <div className="mx-auto max-w-3xl">
-      <p className="text-center text-sm font-bold text-[#888]">
-        Стъпка {index + 1} от {steps.length}
-      </p>
-      <div className="mt-3 mb-6 flex flex-wrap justify-center gap-2">
-        {steps.map((item, itemIndex) => (
-          <button
-            key={item}
-            type="button"
-            disabled={itemIndex > index}
-            onClick={() => itemIndex < index && go(item)}
-            className={`rounded-[20px] px-3 py-1 text-xs font-bold ${item === current ? 'bg-[#38decb] text-white' : 'bg-[#eee] text-[#333] disabled:opacity-40'}`}
-          >
-            {STEP_LABELS[item]}
-          </button>
-        ))}
-      </div>
       <h1 className="mb-4 text-center text-3xl font-black text-[#444]">{titles[current]}</h1>
       {current === 'contact' ? <Contact error={error} onError={setError} onNext={() => go(profile.emailConfirmed ? 'role' : 'confirm')} /> : null}
       {current === 'confirm' ? <Confirm error={error} onError={setError} onNext={() => go('role')} /> : null}
@@ -270,22 +241,22 @@ function Rounds({ error, onError, onNext }: { error: string; onError: (value: st
       onSubmit={(event) => {
         event.preventDefault()
         if (!profile.rounds.first && !profile.rounds.runoff) {
-          onError('Избери поне един тур.')
+          onError('Избери поне един от двата дни.')
           return
         }
         onNext()
       }}
     >
-      <p>И двата тура са за предпочитане: 25 октомври и 1 ноември.</p>
+      <p>По-добре е да си и на двата дни: 25 октомври и балотажа на 1 ноември.</p>
       <label className="flex gap-3 rounded-2xl bg-white px-4 py-3">
         <input type="checkbox" checked={profile.rounds.first} onChange={(event) => updateProfile({ rounds: { ...profile.rounds, first: event.target.checked } })} />
-        Първи тур, 25 октомври
+        25 октомври
       </label>
       <label className="flex gap-3 rounded-2xl bg-white px-4 py-3">
         <input type="checkbox" checked={profile.rounds.runoff} onChange={(event) => updateProfile({ rounds: { ...profile.rounds, runoff: event.target.checked } })} />
-        Балотаж, 1 ноември
+        1 ноември, балотаж
       </label>
-      {!profile.rounds.first || !profile.rounds.runoff ? <p className="text-sm">Ако можеш, остави и двата. Така покриваме секцията и ако има балотаж.</p> : null}
+      {!profile.rounds.first || !profile.rounds.runoff ? <p className="text-sm">Ако можеш, остави и двата дни. Така секцията е покрита и ако има балотаж.</p> : null}
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
       <button className={button} type="submit">
         Напред
@@ -493,7 +464,7 @@ function People({
           <input className={field} placeholder="Телефон" value={companion.phone} onChange={(event) => setCompanion({ ...companion, phone: event.target.value })} />
           <label className="flex gap-2 text-sm">
             <input type="checkbox" checked={companion.samePlace} onChange={(event) => setCompanion({ ...companion, samePlace: event.target.checked })} />
-            Същите място, тур, роля и опит като мен
+            Същите място, дни, роля и опит като мен
           </label>
           {!companion.samePlace ? (
             <div className="grid gap-2 rounded-xl bg-[#f7f7f7] p-3">

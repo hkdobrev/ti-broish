@@ -14,7 +14,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <header className="sticky top-0 z-20 h-[60px] bg-[#38decb]">
+      <header className="sticky top-0 z-20 h-[60px] bg-[#0c5c56]">
         <div className="mx-auto flex h-full max-w-[1000px] items-center px-2.5">
           <Link to="/" className="shrink-0">
             <img src="/logo-white.png" alt="Ти Броиш" className="h-10 w-auto" />
@@ -24,7 +24,7 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <Link
                 key={link.to}
                 to={link.to}
-                className="px-2.5 py-2.5 text-sm font-bold text-white no-underline hover:text-[#eee]"
+                className="px-2.5 py-2.5 text-sm font-bold text-white no-underline hover:text-[#bff6ef] aria-[current=page]:underline"
               >
                 {link.label}
               </Link>
@@ -40,12 +40,12 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </button>
         </div>
         {open ? (
-          <nav className="absolute inset-x-0 top-[60px] grid bg-[#20a898] px-5 py-2 lg:hidden">
+          <nav className="absolute inset-x-0 top-[60px] grid bg-[#0c5c56] px-5 py-2 lg:hidden">
             {links.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className="py-2.5 text-lg font-bold text-white no-underline"
+                className="py-2.5 text-lg font-bold text-white no-underline hover:text-[#bff6ef]"
                 onClick={() => setOpen(false)}
               >
                 {link.label}
@@ -54,8 +54,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </nav>
         ) : null}
       </header>
-      <p className="bg-white px-4 py-2 text-center text-sm text-[#666]">
-        Прототип за преглед. Имейлът не се изпраща, а записът стои само в този браузър.
+      <p className="bg-white px-4 py-2 text-center text-sm text-[#333]">
+        Прототип за преглед. Имейлът не се изпраща, а данните остават само в този браузър.
       </p>
       <main className="mx-auto w-full max-w-[1000px] bg-white px-4 py-8 sm:px-[60px]">{children}</main>
       <div className="h-10 bg-[#38decb]" />
