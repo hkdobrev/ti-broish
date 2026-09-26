@@ -5,6 +5,7 @@ const links = [
   { to: '/about', label: 'Кампанията' },
   { to: '/news', label: 'Актуално' },
   { to: '/izvan-bulgaria', label: 'Извън страната' },
+  { to: '/signal', label: 'Подай сигнал' },
   { to: '/instructions', label: 'Инструкции' },
   { to: '/profil', label: 'Профил' },
 ] as const
@@ -35,6 +36,12 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
           </a>
           <Link to="/signup" search={{ step: 'contact' }} className="font-bold text-[#333] no-underline">
             Запиши се
+          </Link>
+          <Link to="/signal" className="font-bold text-[#333] no-underline">
+            Подай сигнал
+          </Link>
+          <Link to="/protokol" className="font-bold text-[#333] no-underline">
+            Изпрати протокол
           </Link>
           <Link to="/privacy-notice" className="font-bold text-[#333] no-underline">
             Поверителност

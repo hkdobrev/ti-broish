@@ -12,12 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as InstructionsRouteImport } from './routes/instructions'
+import { Route as IzprateniRouteImport } from './routes/izprateni'
 import { Route as IzvanBulgariaRouteImport } from './routes/izvan-bulgaria'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as PrivacyNoticeRouteImport } from './routes/privacy-notice'
 import { Route as ProfilRouteImport } from './routes/profil'
+import { Route as ProtokolRouteImport } from './routes/protokol'
+import { Route as SignalRouteImport } from './routes/signal'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as VhodRouteImport } from './routes/vhod'
+import { Route as IzprateniIdRouteImport } from './routes/izprateni.$id'
 import { Route as PokanaCodeRouteImport } from './routes/pokana.$code'
 import { Route as RCodeRouteImport } from './routes/r.$code'
 
@@ -34,6 +38,11 @@ const AboutRoute = AboutRouteImport.update({
 const InstructionsRoute = InstructionsRouteImport.update({
   id: '/instructions',
   path: '/instructions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IzprateniRoute = IzprateniRouteImport.update({
+  id: '/izprateni',
+  path: '/izprateni',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IzvanBulgariaRoute = IzvanBulgariaRouteImport.update({
@@ -56,6 +65,16 @@ const ProfilRoute = ProfilRouteImport.update({
   path: '/profil',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtokolRoute = ProtokolRouteImport.update({
+  id: '/protokol',
+  path: '/protokol',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignalRoute = SignalRouteImport.update({
+  id: '/signal',
+  path: '/signal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -65,6 +84,11 @@ const VhodRoute = VhodRouteImport.update({
   id: '/vhod',
   path: '/vhod',
   getParentRoute: () => rootRouteImport,
+} as any)
+const IzprateniIdRoute = IzprateniIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => IzprateniRoute,
 } as any)
 const PokanaCodeRoute = PokanaCodeRouteImport.update({
   id: '/pokana/$code',
@@ -81,12 +105,16 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/instructions': typeof InstructionsRoute
+  '/izprateni': typeof IzprateniRouteWithChildren
   '/izvan-bulgaria': typeof IzvanBulgariaRoute
   '/news': typeof NewsRoute
   '/privacy-notice': typeof PrivacyNoticeRoute
   '/profil': typeof ProfilRoute
+  '/protokol': typeof ProtokolRoute
+  '/signal': typeof SignalRoute
   '/signup': typeof SignupRoute
   '/vhod': typeof VhodRoute
+  '/izprateni/$id': typeof IzprateniIdRoute
   '/pokana/$code': typeof PokanaCodeRoute
   '/r/$code': typeof RCodeRoute
 }
@@ -94,12 +122,16 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/instructions': typeof InstructionsRoute
+  '/izprateni': typeof IzprateniRouteWithChildren
   '/izvan-bulgaria': typeof IzvanBulgariaRoute
   '/news': typeof NewsRoute
   '/privacy-notice': typeof PrivacyNoticeRoute
   '/profil': typeof ProfilRoute
+  '/protokol': typeof ProtokolRoute
+  '/signal': typeof SignalRoute
   '/signup': typeof SignupRoute
   '/vhod': typeof VhodRoute
+  '/izprateni/$id': typeof IzprateniIdRoute
   '/pokana/$code': typeof PokanaCodeRoute
   '/r/$code': typeof RCodeRoute
 }
@@ -108,12 +140,16 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/instructions': typeof InstructionsRoute
+  '/izprateni': typeof IzprateniRouteWithChildren
   '/izvan-bulgaria': typeof IzvanBulgariaRoute
   '/news': typeof NewsRoute
   '/privacy-notice': typeof PrivacyNoticeRoute
   '/profil': typeof ProfilRoute
+  '/protokol': typeof ProtokolRoute
+  '/signal': typeof SignalRoute
   '/signup': typeof SignupRoute
   '/vhod': typeof VhodRoute
+  '/izprateni/$id': typeof IzprateniIdRoute
   '/pokana/$code': typeof PokanaCodeRoute
   '/r/$code': typeof RCodeRoute
 }
@@ -123,12 +159,16 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/instructions'
+    | '/izprateni'
     | '/izvan-bulgaria'
     | '/news'
     | '/privacy-notice'
     | '/profil'
+    | '/protokol'
+    | '/signal'
     | '/signup'
     | '/vhod'
+    | '/izprateni/$id'
     | '/pokana/$code'
     | '/r/$code'
   fileRoutesByTo: FileRoutesByTo
@@ -136,12 +176,16 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/instructions'
+    | '/izprateni'
     | '/izvan-bulgaria'
     | '/news'
     | '/privacy-notice'
     | '/profil'
+    | '/protokol'
+    | '/signal'
     | '/signup'
     | '/vhod'
+    | '/izprateni/$id'
     | '/pokana/$code'
     | '/r/$code'
   id:
@@ -149,12 +193,16 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/instructions'
+    | '/izprateni'
     | '/izvan-bulgaria'
     | '/news'
     | '/privacy-notice'
     | '/profil'
+    | '/protokol'
+    | '/signal'
     | '/signup'
     | '/vhod'
+    | '/izprateni/$id'
     | '/pokana/$code'
     | '/r/$code'
   fileRoutesById: FileRoutesById
@@ -163,10 +211,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   InstructionsRoute: typeof InstructionsRoute
+  IzprateniRoute: typeof IzprateniRouteWithChildren
   IzvanBulgariaRoute: typeof IzvanBulgariaRoute
   NewsRoute: typeof NewsRoute
   PrivacyNoticeRoute: typeof PrivacyNoticeRoute
   ProfilRoute: typeof ProfilRoute
+  ProtokolRoute: typeof ProtokolRoute
+  SignalRoute: typeof SignalRoute
   SignupRoute: typeof SignupRoute
   VhodRoute: typeof VhodRoute
   PokanaCodeRoute: typeof PokanaCodeRoute
@@ -194,6 +245,13 @@ declare module '@tanstack/react-router' {
       path: '/instructions'
       fullPath: '/instructions'
       preLoaderRoute: typeof InstructionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/izprateni': {
+      id: '/izprateni'
+      path: '/izprateni'
+      fullPath: '/izprateni'
+      preLoaderRoute: typeof IzprateniRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/izvan-bulgaria': {
@@ -224,6 +282,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfilRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/protokol': {
+      id: '/protokol'
+      path: '/protokol'
+      fullPath: '/protokol'
+      preLoaderRoute: typeof ProtokolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signal': {
+      id: '/signal'
+      path: '/signal'
+      fullPath: '/signal'
+      preLoaderRoute: typeof SignalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -237,6 +309,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/vhod'
       preLoaderRoute: typeof VhodRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/izprateni/$id': {
+      id: '/izprateni/$id'
+      path: '/$id'
+      fullPath: '/izprateni/$id'
+      preLoaderRoute: typeof IzprateniIdRouteImport
+      parentRoute: typeof IzprateniRoute
     }
     '/pokana/$code': {
       id: '/pokana/$code'
@@ -255,14 +334,29 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface IzprateniRouteChildren {
+  IzprateniIdRoute: typeof IzprateniIdRoute
+}
+
+const IzprateniRouteChildren: IzprateniRouteChildren = {
+  IzprateniIdRoute: IzprateniIdRoute,
+}
+
+const IzprateniRouteWithChildren = IzprateniRoute._addFileChildren(
+  IzprateniRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   InstructionsRoute: InstructionsRoute,
+  IzprateniRoute: IzprateniRouteWithChildren,
   IzvanBulgariaRoute: IzvanBulgariaRoute,
   NewsRoute: NewsRoute,
   PrivacyNoticeRoute: PrivacyNoticeRoute,
   ProfilRoute: ProfilRoute,
+  ProtokolRoute: ProtokolRoute,
+  SignalRoute: SignalRoute,
   SignupRoute: SignupRoute,
   VhodRoute: VhodRoute,
   PokanaCodeRoute: PokanaCodeRoute,
@@ -271,3 +365,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

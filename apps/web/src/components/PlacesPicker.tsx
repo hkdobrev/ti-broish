@@ -19,9 +19,13 @@ const inputClass =
 export function PlacesPicker({
   value,
   onChange,
+  sectionLabel = 'Секция, ако имаш предпочитание',
+  footnote,
 }: {
   value: HomePlace | null
   onChange: (place: HomePlace | null) => void
+  sectionLabel?: string
+  footnote?: string
 }) {
   const [regions, setRegions] = useState<ElectionRegion[]>([])
   const [countries, setCountries] = useState<Country[]>([])
@@ -278,7 +282,7 @@ export function PlacesPicker({
 
       {!abroad && value?.townId ? (
         <label className="grid gap-1.5 text-sm font-semibold">
-          Секция, ако имаш предпочитание
+          {sectionLabel}
           <select
             className={inputClass}
             value={value.sectionId ?? ''}
@@ -297,9 +301,12 @@ export function PlacesPicker({
         </label>
       ) : null}
 
-      <p className="rounded-xl bg-[var(--sand)] px-3 py-2 text-sm leading-6 text-[var(--ink-soft)]">
-        Можеш да гласуваш само там, където обичайно гласуваш. Разпределението не ти дава право да гласуваш в секцията, в която те изпратим.
-      </p>
+      {footnote === '' ? null : (
+        <p className="rounded-xl bg-[var(--sand)] px-3 py-2 text-sm leading-6 text-[var(--ink-soft)]">
+          {footnote ??
+            'Можеш да гласуваш само там, където обичайно гласуваш. Разпределението не ти дава право да гласуваш в секцията, в която те изпратим.'}
+        </p>
+      )}
     </div>
   )
 }

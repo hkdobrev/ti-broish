@@ -2,6 +2,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { BulgariaMap } from '../components/BulgariaMap'
 import { PlacesPicker } from '../components/PlacesPicker'
+import { StaffNote } from '../components/StaffNote'
 import { loadSignup, saveSignup } from '../signup/db'
 import { geocodePlace } from '../signup/geo'
 import { OBLASTS } from '../signup/oblasts'
@@ -630,6 +631,7 @@ function Review({ error, onError }: { error: string; onError: (value: string) =>
             : profile.companions.map((person) => (person.mode === 'full' ? `${person.firstName} ${person.lastName}` : person.email)).join(', ')}
         </li>
       </ul>
+      <StaffNote />
       <p className="leading-7">Хартиените секции са с предимство. Машинна секция се използва само ако за населеното място вече има твърде много записани.</p>
       <label className="flex items-start gap-3 rounded-2xl bg-white px-4 py-4 leading-7">
         <input type="checkbox" className="mt-1" checked={profile.consent} onChange={(event) => updateProfile({ consent: event.target.checked })} />

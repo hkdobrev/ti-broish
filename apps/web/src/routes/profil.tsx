@@ -1,37 +1,100 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ElectionActions } from '../components/ElectionActions'
 import { PageIntro } from '../components/SiteChrome'
+import { StaffNote } from '../components/StaffNote'
+import { loadSignup, saveSignup } from '../signup/db'
 import { EXPERIENCE, placeLabel, radiusOptions, roleLabel } from '../signup/model'
-import { loadSignup } from '../signup/db'
+import { rememberReport } from '../signup/report-memory'
+import { submitCall } from '../signup/reports'
 import { ensureReferralCode, updateProfile, useProfile } from '../signup/store'
 
 export const Route = createFileRoute('/profil')({ component: ProfilePage })
+
+function AnonymousCall() {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [done, setDone] = useState(false)
+  const field = 'min-h-11 w-full rounded-xl border border-[#ddd] bg-white px-3'
+  if (done) return <p>Записахме, че искаш обаждане. Екипът ще ти звънне на {phone}.</p>
+  return (
+    <form
+      className="grid gap-3"
+      onSubmit={(event) => {
+        event.preventDefault()
+        setError('')
+        void submitCall({ data: { name, phone, email: '', message } }).then((result) => {
+          if (!result.ok) {
+            setError(result.message)
+            return
+          }
+          rememberReport({ id: result.id, secret: result.secret, kind: 'call' })
+          setDone(true)
+        })
+      }}
+    >
+      <p className="leading-7">Ако искаш обаждане, без да се записваш, остави телефон.</p>
+      <input className={field} autoComplete="name" placeholder="Име" value={name} onChange={(event) => setName(event.target.value)} required />
+      <input className={field} type="tel" autoComplete="tel" placeholder="Телефон" value={phone} onChange={(event) => setPhone(event.target.value)} required />
+      <textarea className={`${field} min-h-24 py-2`} placeholder="По какъв въпрос" value={message} onChange={(event) => setMessage(event.target.value)} />
+      {error ? <p className="text-red-700">{error}</p> : null}
+      <button className="brand-button" type="submit">
+        Поискай обаждане
+      </button>
+    </form>
+  )
+}
 
 function ProfilePage() {
   const { profile, ready } = useProfile()
   const [inviteLink, setInviteLink] = useState('')
   const [referralCount, setReferralCount] = useState(0)
+  const [synced, setSynced] = useState(false)
+  const skipSave = useRef(true)
   useEffect(() => {
     if (!profile.emailConfirmed) return
     const code = ensureReferralCode(profile)
     setInviteLink(`${window.location.origin}/signup?ref=${code}`)
   }, [profile])
   useEffect(() => {
+    let cancelled = false
     void loadSignup().then((remote) => {
-      if (!remote) return
-      updateProfile({ ...remote.profile, referrerName: remote.referrerName })
-      setReferralCount(remote.referralCount)
+      if (cancelled) return
+      if (remote) {
+        updateProfile({ ...remote.profile, referrerName: remote.referrerName })
+        setReferralCount(remote.referralCount)
+      }
+      setSynced(true)
     })
+    return () => {
+      cancelled = true
+    }
   }, [])
+  useEffect(() => {
+    if (!synced) return
+    if (skipSave.current) {
+      skipSave.current = false
+      return
+    }
+    if (!profile.email.includes('@')) return
+    const handle = window.setTimeout(() => {
+      void saveSignup({ data: profile })
+    }, 600)
+    return () => window.clearTimeout(handle)
+  }, [synced, profile])
 
   if (!ready) return <p>Зареждаме профила…</p>
   if (!profile.email) {
     return (
-      <div>
-        <PageIntro title="Още нямаш профил" lede="Запиши се и потвърди имейла. После профилът остава отворен на този браузър." />
+      <div className="grid gap-4">
+        <PageIntro title="Още нямаш профил" lede="Запиши се и потвърди имейла. Сигнал и протокол можеш да изпратиш и без профил." />
         <Link to="/signup" search={{ step: 'contact' }} className="brand-button">
           Запиши се
         </Link>
+        <ElectionActions />
+        <AnonymousCall />
       </div>
     )
   }
@@ -58,6 +121,8 @@ function ProfilePage() {
         ))}
       </ol>
       <p>Ще ти пишем, когато има секция, дата и адрес. Дотогава няма разпределение.</p>
+      <ElectionActions />
+      <StaffNote />
       <section className="rounded-2xl border border-[var(--line)] bg-white p-4 leading-7">
         <p>{profile.firstName} {profile.middleName} {profile.lastName}</p>
         <p>{profile.email}</p>

@@ -58,6 +58,9 @@ export interface Profile {
   referralCode: string
   referredBy: string | null
   referrerName: string | null
+  notes: string
+  callRequestedAt: string | null
+  callMessage: string
   consent: boolean
   submitted: boolean
   withdrawn: boolean
@@ -86,6 +89,9 @@ export const emptyProfile = (): Profile => ({
   referralCode: '',
   referredBy: null,
   referrerName: null,
+  notes: '',
+  callRequestedAt: null,
+  callMessage: '',
   consent: false,
   submitted: false,
   withdrawn: false,
