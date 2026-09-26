@@ -22,7 +22,7 @@ function InvitePage() {
         lede="Групата няма име. Тя събира хора, които се познават. В един град може да има повече от една. Мястото си избираш сам."
       />
       <p className="mb-4 font-bold tracking-widest">{code}</p>
-      <Link to="/signup" search={{ step: 'contact' }} className="rounded-full bg-[var(--blue)] px-5 py-3 text-white no-underline">
+      <Link to="/signup" search={{ step: 'contact' }} className="brand-button">
         {own ? 'Към записването' : 'Приеми и се запиши'}
       </Link>
     </div>

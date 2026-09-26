@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;900&display=swap');
 @import 'tailwindcss';
 
 @theme {
@@ -6,12 +6,19 @@
 }
 
 :root {
-  --ink: #10211f;
-  --ink-soft: #3c5552;
-  --blue: #0c7c72;
-  --sand: #e7f7f4;
-  --line: #c9e4df;
-  --paper: #f3fbf9;
+  --ink: #333;
+  --ink-soft: #666;
+  --heading: #444;
+  --muted: #888;
+  --teal: #38decb;
+  --teal-button: #30cebc;
+  --teal-active: #2ab9a8;
+  --teal-menu: #20a898;
+  --blue: #30cebc;
+  --sand: #eee;
+  --line: #ddd;
+  --paper: #fff;
+  --footer: #eee;
 }
 
 * {
@@ -24,10 +31,11 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
+  font-weight: 500;
 }
 
 a {
-  color: var(--blue);
+  color: #2ab9a8;
   font-weight: 700;
 }
 
@@ -35,4 +43,42 @@ button,
 input,
 select {
   font: inherit;
+}
+
+main h1 {
+  color: #444;
+}
+
+main h2 {
+  color: #888;
+}
+
+.brand-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 20px;
+  background: #30cebc;
+  padding: 10px 20px;
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 0 10px #444;
+}
+
+.brand-button:hover {
+  background: #38decb;
+  color: white;
+}
+
+.brand-button:active {
+  background: #2ab9a8;
+  box-shadow: inset 0 0 10px #444;
+}
+
+.brand-button:disabled {
+  opacity: 0.45;
 }

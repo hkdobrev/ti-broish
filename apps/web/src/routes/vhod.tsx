@@ -26,7 +26,7 @@ function LoginPage() {
           Имейл
           <input className="min-h-11 rounded-xl border border-[var(--line)] px-3" value={email} onChange={(event) => setEmail(event.target.value)} />
         </label>
-        <button type="submit" className="min-h-11 rounded-full bg-[var(--blue)] px-5 font-bold text-white">
+        <button type="submit" className="brand-button">
           Изпрати линк
         </button>
       </form>

@@ -12,10 +12,10 @@ function HomePage() {
         lede="От площада поискахме честни избори. Сега ги пазим в секциите. Записването е доброволно и без заплащане."
       />
       <div className="mb-8 flex flex-wrap gap-3">
-        <Link to="/signup" className="rounded-full bg-[var(--blue)] px-5 py-3 text-white no-underline">
+        <Link to="/signup" className="brand-button">
           Запиши се
         </Link>
-        <Link to="/about" className="rounded-full border border-[var(--line)] bg-white px-5 py-3 no-underline">
+        <Link to="/about" className="brand-button">
           За кампанията
         </Link>
       </div>

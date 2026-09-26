@@ -11,9 +11,9 @@ export function RadiusMap({
 }) {
   const selected = new Set(regionCodes)
   return (
-    <figure className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[#e7f6f4]">
+    <figure className="overflow-hidden border border-[#ddd] bg-[#eee]">
       <svg viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`} className="h-auto w-full" role="img" aria-label="Карта на областите в България">
-        <rect width={MAP_WIDTH} height={MAP_HEIGHT} fill="#d5efec" />
+        <rect width={MAP_WIDTH} height={MAP_HEIGHT} fill="#eee" />
         {OBLASTS.map((oblast) => {
           const on = oblast.regionCodes.some((code) => selected.has(code))
           const toggleCode = oblast.regionCodes[0]
@@ -21,8 +21,8 @@ export function RadiusMap({
             <path
               key={oblast.id}
               d={oblast.d}
-              fill={on ? '#0f8f80' : '#f7fffe'}
-              stroke="#0b3f3b"
+              fill={on ? '#38decb' : '#fff'}
+              stroke="#2ab9a8"
               strokeWidth={on ? 2.2 : 1}
               className={interactive ? 'cursor-pointer' : undefined}
               onClick={interactive && toggleCode ? () => onToggle?.(toggleCode) : undefined}

@@ -27,7 +27,7 @@ export const Route = createFileRoute('/signup')({
   component: SignupPage,
 })
 
-const button = 'min-h-11 rounded-full bg-[var(--blue)] px-5 font-bold text-white disabled:opacity-40'
+const button = 'brand-button disabled:opacity-40'
 const ghost = 'min-h-11 rounded-full border border-[var(--line)] bg-white px-5 font-bold'
 const field = 'min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3'
 
@@ -69,13 +69,13 @@ function SignupPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <p className="text-sm font-bold text-[var(--blue)]">
+      <p className="text-center text-sm font-bold text-[#888]">
         Стъпка {index + 1} от {steps.length}
       </p>
-      <div className="mt-2 mb-6 h-2 overflow-hidden rounded-full bg-[#d7eeeb]">
-        <div className="h-full bg-[var(--blue)]" style={{ width: `${((index + 1) / steps.length) * 100}%` }} />
+      <div className="mt-2 mb-6 h-2 overflow-hidden bg-[#eee]">
+        <div className="h-full bg-[#38decb]" style={{ width: `${((index + 1) / steps.length) * 100}%` }} />
       </div>
-      <h1 className="mb-4 text-3xl font-extrabold tracking-tight">{titles[current]}</h1>
+      <h1 className="mb-4 text-center text-3xl font-black text-[#444]">{titles[current]}</h1>
       {current === 'contact' ? <Contact error={error} onError={setError} onNext={() => go(profile.emailConfirmed ? 'role' : 'confirm')} /> : null}
       {current === 'confirm' ? <Confirm error={error} onError={setError} onNext={() => go('role')} /> : null}
       {current === 'role' ? <RoleStep error={error} onError={setError} onNext={nextStep} /> : null}
@@ -236,7 +236,7 @@ function RoleStep({ error, onError, onNext }: { error: string; onError: (value: 
 
 function Choice({ selected, title, text, onClick }: { selected: boolean; title: string; text: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`rounded-2xl border px-4 py-4 text-left ${selected ? 'border-[var(--blue)] bg-[#e7f7f4]' : 'border-[var(--line)] bg-white'}`}>
+    <button type="button" onClick={onClick} className={`rounded-[20px] border px-4 py-4 text-left ${selected ? 'border-[#38decb] bg-[#e7fbf8]' : 'border-[#ddd] bg-white'}`}>
       <span className="block text-lg font-extrabold">{title}</span>
       <span className="mt-1 block text-sm leading-6 text-[var(--ink-soft)]">{text}</span>
     </button>

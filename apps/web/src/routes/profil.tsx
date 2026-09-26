@@ -12,7 +12,7 @@ function ProfilePage() {
     return (
       <div>
         <PageIntro title="Още нямаш профил" lede="Запиши се и потвърди имейла. После профилът те държи вписан на този браузър." />
-        <Link to="/signup" className="rounded-full bg-[var(--blue)] px-5 py-3 text-white no-underline">
+        <Link to="/signup" className="brand-button">
           Запиши се
         </Link>
       </div>
@@ -73,7 +73,7 @@ function ProfilePage() {
               {person.status === 'pending' ? (
                 <button
                   type="button"
-                  className="ml-3 text-sm font-bold text-[var(--blue)]"
+                  className="ml-3 text-sm font-bold text-[#2ab9a8]"
                   onClick={() =>
                     updateProfile({
                       companions: profile.companions.map((item) => (item.id === person.id ? { ...item, status: 'confirmed' } : item)),
@@ -88,7 +88,7 @@ function ProfilePage() {
         </ul>
       ) : null}
       <div className="flex flex-wrap gap-3">
-        <Link to="/signup" search={{ step: 'contact' }} className="rounded-full bg-[var(--blue)] px-5 py-3 text-white no-underline">
+        <Link to="/signup" search={{ step: 'contact' }} className="brand-button">
           Промени данните
         </Link>
         <button
