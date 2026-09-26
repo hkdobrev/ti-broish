@@ -1,0 +1,25 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "ti-broish-cms-staging",
+	"account_id": "579692914a155ab268c22b814cbf8a05",
+	"main": "./src/worker.ts",
+	"compatibility_date": "2026-09-26",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": true,
+	"observability": { "enabled": true },
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "ti-broish-cms-staging"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "ti-broish-cms-media"
+		}
+	],
+	"triggers": {
+		"crons": ["* * * * *"]
+	}
+}
