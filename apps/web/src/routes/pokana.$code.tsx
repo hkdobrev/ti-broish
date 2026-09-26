@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { PageIntro } from '../components/SiteChrome'
 import { updateProfile, useProfile } from '../signup/store'
@@ -10,7 +10,11 @@ function InvitePage() {
   const { profile } = useProfile()
 
   useEffect(() => {
-    updateProfile({ joinedInvite: code })
+    updateProfile((current) => ({
+      ...current,
+      joinedInvite: code,
+      referredBy: current.referredBy || code,
+    }))
   }, [code])
 
   const own = profile.inviteCode === code
@@ -22,9 +26,9 @@ function InvitePage() {
         lede="Групата няма име. Тя събира хора, които се познават. В един град може да има повече от една. Мястото си избираш сам."
       />
       <p className="mb-4 font-bold tracking-widest">{code}</p>
-      <Link to="/signup" search={{ step: 'contact' }} className="brand-button">
+      <a href={`/signup?ref=${encodeURIComponent(code)}`} className="brand-button">
         {own ? 'Към записването' : 'Приеми и се запиши'}
-      </Link>
+      </a>
     </div>
   )
 }

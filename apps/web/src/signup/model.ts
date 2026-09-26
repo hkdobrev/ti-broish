@@ -55,6 +55,9 @@ export interface Profile {
   companions: Companion[]
   inviteCode: string
   joinedInvite: string | null
+  referralCode: string
+  referredBy: string | null
+  referrerName: string | null
   consent: boolean
   submitted: boolean
   withdrawn: boolean
@@ -80,6 +83,9 @@ export const emptyProfile = (): Profile => ({
   companions: [],
   inviteCode: '',
   joinedInvite: null,
+  referralCode: '',
+  referredBy: null,
+  referrerName: null,
   consent: false,
   submitted: false,
   withdrawn: false,

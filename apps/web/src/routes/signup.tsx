@@ -2,6 +2,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { BulgariaMap } from '../components/BulgariaMap'
 import { PlacesPicker } from '../components/PlacesPicker'
+import { loadSignup, saveSignup } from '../signup/db'
 import { geocodePlace } from '../signup/geo'
 import { OBLASTS } from '../signup/oblasts'
 import {
@@ -20,6 +21,7 @@ import {
   validPhone,
   type Companion,
   type Experience,
+  type Profile,
   type Role,
   type StepId,
 } from '../signup/model'
@@ -41,6 +43,37 @@ function SignupPage() {
   const navigate = useNavigate()
   const { profile, ready } = useProfile()
   const [error, setError] = useState('')
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get('ref')
+    if (!ref) return
+    updateProfile((current) => (current.referredBy ? current : { ...current, referredBy: ref }))
+  }, [])
+  useEffect(() => {
+    let cancelled = false
+    void loadSignup().then((remote) => {
+      if (cancelled || !remote) return
+      const ref = new URLSearchParams(window.location.search).get('ref')
+      updateProfile({
+        ...remote.profile,
+        referredBy: remote.profile.referredBy || ref,
+        referrerName: remote.referrerName,
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  useEffect(() => {
+    if (!ready || !profile.email.includes('@')) return
+    const handle = window.setTimeout(() => {
+      void saveSignup({ data: profile }).then((result) => {
+        if (result.ok && result.referrerName && result.referrerName !== profile.referrerName) {
+          updateProfile({ referrerName: result.referrerName })
+        }
+      })
+    }, 600)
+    return () => window.clearTimeout(handle)
+  }, [profile, ready])
   const [companion, setCompanion] = useState<Companion>(blankCompanion())
   const steps = stepsFor(profile.role)
   const requested = step === 'radius' ? 'place' : step
@@ -74,6 +107,7 @@ function SignupPage() {
   return (
     <div className="grid gap-4">
       <h1 className="text-3xl font-black text-[#444]">{titles[current]}</h1>
+      {profile.referredBy ? <p>Покана от {profile.referrerName || 'човек, който вече се е записал'}.</p> : null}
       {current === 'contact' ? <Contact error={error} onError={setError} onNext={() => go(profile.emailConfirmed ? 'role' : 'confirm')} /> : null}
       {current === 'confirm' ? <Confirm error={error} onError={setError} onNext={() => go('role')} /> : null}
       {current === 'role' ? <RoleStep error={error} onError={setError} onNext={nextStep} /> : null}
@@ -292,9 +326,39 @@ function ExperienceStep({ error, onError, onNext }: { error: string; onError: (v
   )
 }
 
+function toggleDistant(profile: Profile, code: string) {
+  const home = profile.place?.regionCode
+  if (code === home || (home === 'sofia-merged' && ['23', '24', '25'].includes(code))) return
+  const exists = profile.distantRegionCodes.includes(code)
+  updateProfile({
+    distantRegionCodes: exists ? profile.distantRegionCodes.filter((item) => item !== code) : [...profile.distantRegionCodes, code],
+  })
+}
+
+function DistantOblasts({ profile }: { profile: Profile }) {
+  const home = new Set(highlightCodes(profile.place, 'region', []))
+  const choices = OBLASTS.filter((oblast) => !oblast.regionCodes.some((code) => home.has(code)))
+  return (
+    <fieldset className="grid gap-2">
+      <legend className="text-sm font-semibold">Други области</legend>
+      {choices.map((oblast) => {
+        const code = oblast.regionCodes[0]
+        if (!code) return null
+        return (
+          <label key={oblast.id} className="flex min-h-12 items-center gap-3 rounded-2xl bg-white px-4">
+            <input type="checkbox" checked={profile.distantRegionCodes.includes(code)} onChange={() => toggleDistant(profile, code)} />
+            {oblast.name}
+          </label>
+        )
+      })}
+    </fieldset>
+  )
+}
+
 function PlaceStep({ error, onError, onNext }: { error: string; onError: (value: string) => void; onNext: () => void }) {
   const { profile } = useProfile()
   const [focus, setFocus] = useState<{ lat: number; lng: number; zoom: number } | null>(null)
+  const [showMap, setShowMap] = useState(false)
   const options = radiusOptions(profile.place)
   const highlighted = highlightCodes(profile.place, profile.radius, profile.distantRegionCodes)
   const query = mapQuery(profile.place, profile.radius)
@@ -334,19 +398,17 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
         onNext()
       }}
     >
-      <BulgariaMap
-        regionCodes={highlighted}
-        focus={focus}
-        interactive={profile.radius === 'distant' && profile.place?.regionCode !== '32'}
-        onToggle={(code) => {
-          const home = profile.place?.regionCode
-          if (code === home || (home === 'sofia-merged' && code === '23')) return
-          const exists = profile.distantRegionCodes.includes(code)
-          updateProfile({
-            distantRegionCodes: exists ? profile.distantRegionCodes.filter((item) => item !== code) : [...profile.distantRegionCodes, code],
-          })
-        }}
-      />
+      <button type="button" className={ghost} onClick={() => setShowMap((value) => !value)}>
+        {showMap ? 'Скрий картата' : 'Покажи картата'}
+      </button>
+      {showMap ? (
+        <BulgariaMap
+          regionCodes={highlighted}
+          focus={focus}
+          interactive={profile.radius === 'distant' && profile.place?.regionCode !== '32'}
+          onToggle={(code) => toggleDistant(profile, code)}
+        />
+      ) : null}
       <PlacesPicker
         value={profile.place}
         onChange={(place) => {
@@ -369,12 +431,7 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
           ))}
         </fieldset>
       ) : null}
-      {profile.radius === 'distant' && profile.place?.regionCode !== '32' ? (
-        <p className="text-sm">
-          Други области:{' '}
-          {profile.distantRegionCodes.map((code) => OBLASTS.find((item) => item.regionCodes.includes(code))?.name ?? code).join(', ') || 'натисни ги на картата'}
-        </p>
-      ) : null}
+      {profile.radius === 'distant' && profile.place?.regionCode !== '32' ? <DistantOblasts profile={profile} /> : null}
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
       <button className={button} type="submit">
         Напред
@@ -422,7 +479,7 @@ function People({
   const { profile } = useProfile()
   const [link, setLink] = useState('')
   useEffect(() => {
-    setLink(`${window.location.origin}/pokana/${ensureInviteCode(profile)}`)
+    setLink(`${window.location.origin}/signup?ref=${ensureInviteCode(profile)}`)
   }, [profile])
 
   function add(mode: Companion['mode']) {

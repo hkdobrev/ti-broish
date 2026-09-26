@@ -21,17 +21,16 @@ function InstructionsPage() {
         <li>Не пречиш на СИК и не пропускаш нарушение.</li>
         <li>Без копие от протокола работата не е приключила.</li>
       </ul>
-      <h2 className="pt-2 text-2xl font-extrabold">Материали</h2>
-      <ul className="space-y-2">
+      <ul className="space-y-3 text-lg leading-7">
         {files.map(([label, href]) => (
           <li key={href}>
             <a href={href}>{label}</a>
           </li>
         ))}
       </ul>
-      <p>
-        Още не си записан? <Link to="/signup" search={{ step: 'contact' }}>Запиши се</Link>
-      </p>
+      <Link to="/signup" search={{ step: 'contact' }} className="brand-button">
+        Запиши се
+      </Link>
     </article>
   )
 }

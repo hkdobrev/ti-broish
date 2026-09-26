@@ -2,18 +2,27 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { PageIntro } from '../components/SiteChrome'
 import { EXPERIENCE, placeLabel, radiusOptions, roleLabel } from '../signup/model'
-import { ensureInviteCode, updateProfile, useProfile } from '../signup/store'
+import { loadSignup } from '../signup/db'
+import { ensureReferralCode, updateProfile, useProfile } from '../signup/store'
 
 export const Route = createFileRoute('/profil')({ component: ProfilePage })
 
 function ProfilePage() {
   const { profile, ready } = useProfile()
   const [inviteLink, setInviteLink] = useState('')
+  const [referralCount, setReferralCount] = useState(0)
   useEffect(() => {
     if (!profile.emailConfirmed) return
-    const code = profile.inviteCode || ensureInviteCode(profile)
-    setInviteLink(`${window.location.origin}/pokana/${code}`)
-  }, [profile.emailConfirmed, profile.inviteCode])
+    const code = ensureReferralCode(profile)
+    setInviteLink(`${window.location.origin}/signup?ref=${code}`)
+  }, [profile])
+  useEffect(() => {
+    void loadSignup().then((remote) => {
+      if (!remote) return
+      updateProfile({ ...remote.profile, referrerName: remote.referrerName })
+      setReferralCount(remote.referralCount)
+    })
+  }, [])
 
   if (!ready) return <p>Зареждаме профила…</p>
   if (!profile.email) {
@@ -68,10 +77,20 @@ function ProfilePage() {
         Ако имаш по-малко опит и свободни места, или опит без кола, можем по-късно да те съчетаем с човек, който допълва профила ти. Това още не е конкретен човек.
       </p>
       {inviteLink ? (
-        <p className="break-all text-sm leading-6">
-          Линк за хора, с които се познавате: {inviteLink}
-          {profile.joinedInvite ? ` Влязъл си с покана ${profile.joinedInvite}.` : ''}
-        </p>
+        <div className="grid gap-3">
+          <p>Твоят линк за покана. Който го отвори, се записва през теб.</p>
+          <p className="break-all">{inviteLink}</p>
+          <button type="button" className="brand-button" onClick={() => void navigator.clipboard.writeText(inviteLink)}>
+            Копирай линка
+          </button>
+          <a className="brand-button" href={`viber://forward?text=${encodeURIComponent(`Запиши се за Ти Броиш ${inviteLink}`)}`}>
+            Сподели във Viber
+          </a>
+          <a className="brand-button" href={`https://wa.me/?text=${encodeURIComponent(`Запиши се за Ти Броиш ${inviteLink}`)}`}>
+            Сподели в WhatsApp
+          </a>
+          {referralCount > 0 ? <p>През твоя линк са минали {referralCount} души.</p> : null}
+        </div>
       ) : null}
       {profile.companions.length > 0 ? (
         <ul className="grid gap-2">
