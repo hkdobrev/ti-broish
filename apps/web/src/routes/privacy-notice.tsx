@@ -1,0 +1,25 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { PageIntro } from '../components/SiteChrome'
+
+export const Route = createFileRoute('/privacy-notice')({ component: PrivacyPage })
+
+function PrivacyPage() {
+  return (
+    <article className="max-w-3xl space-y-4 text-base leading-7">
+      <PageIntro kicker="Лични данни" title="Декларация за поверителност" />
+      <p>
+        Администратор на личните данни за сайта tibroish.bg е ПП „Движение Да България“. Длъжностно лице по защита на данните е Божидар Божанов. Пишете на team@tibroish.bg.
+      </p>
+      <p>
+        В това записване събираме трите имена, имейл, телефон и предпочитанията за участие: роля, турове, опит, място, радиус на пътуване и свободни места в колата. Не събираме ЕГН, номер на лична карта или постоянен адрес.
+      </p>
+      <p>
+        Данните са за доброволната кампания: да потвърдим имейла, да пазим профила, да разпределим хората по секции и да изпратим следващите стъпки. Прототипът на d1t.tibroish.bg пази записа само в браузъра и не го изпраща към сървър.
+      </p>
+      <p>
+        Пълният досегашен текст е на{' '}
+        <a href="https://tibroish.bg/privacy-notice">tibroish.bg/privacy-notice</a>. Той още споменава ЕГН, защото описва предишното записване. Преди публичното пускане текстът ще бъде подравнен с новите полета.
+      </p>
+    </article>
+  )
+}

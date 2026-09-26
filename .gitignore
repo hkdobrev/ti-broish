@@ -1,0 +1,7 @@
+.DS_Store
+node_modules
+.terraform
+*.tfstate
+*.tfstate.*
+.wrangler
+.dev.vars

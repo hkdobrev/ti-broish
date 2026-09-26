@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --ink: #10211f;
+  --ink-soft: #3c5552;
+  --blue: #0c7c72;
+  --sand: #e7f7f4;
+  --line: #c9e4df;
+  --paper: #f3fbf9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+a {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
