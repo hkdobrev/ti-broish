@@ -13,7 +13,7 @@ import {
   type Town,
 } from '../signup/geo'
 import type { HomePlace } from '../signup/model'
-import { sectionDesk } from '../signup/sections'
+import { groupSections, sectionDesk, sectionNumber } from '../signup/sections'
 
 const inputClass =
   'min-h-11 w-full rounded-xl border border-[var(--line)] bg-white px-3 text-base text-[var(--ink)]'
@@ -311,12 +311,22 @@ export function PlacesPicker({
             }}
           >
             <option value="">Без конкретна секция</option>
-            {[...sections].sort(compareSections).map((item) => {
-              const machine = deskSections && sectionDesk(item) === 'machine'
+            {groupSections([...sections].sort(compareSections)).map((group) => {
+              const options = group.sections.map((item) => {
+                const machine = deskSections && sectionDesk(item) === 'machine'
+                const several = group.sections.length > 1
+                const label = several ? `Секция ${sectionNumber(item.id)}` : group.place
+                return (
+                  <option key={item.id} value={item.id} disabled={machine}>
+                    {machine ? `${label} · машинна` : label}
+                  </option>
+                )
+              })
+              if (group.sections.length < 2) return options
               return (
-                <option key={item.id} value={item.id} disabled={machine}>
-                  {machine ? `${item.place} · машинна` : item.place}
-                </option>
+                <optgroup key={group.place} label={group.place}>
+                  {options}
+                </optgroup>
               )
             })}
           </select>

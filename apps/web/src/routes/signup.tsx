@@ -15,6 +15,7 @@ import {
   placeLabel,
   placeReady,
   radiusOptions,
+  signupGap,
   roleLabel,
   stepsFor,
   validEmail,
@@ -27,7 +28,7 @@ import {
   type StepId,
 } from '../signup/model'
 import { sectionDesk, spreadAround } from '../signup/sections'
-import { ensureInviteCode, updateProfile, useProfile } from '../signup/store'
+import { updateProfile, useProfile } from '../signup/store'
 import type { CityRegion, PollingSection } from '../signup/geo'
 
 export const Route = createFileRoute('/signup')({
@@ -69,7 +70,10 @@ function SignupPage() {
   useEffect(() => {
     if (!ready || !profile.email.includes('@')) return
     const handle = window.setTimeout(() => {
-      void saveSignup({ data: profile }).then((result) => {
+      const counted = signupGap(profile) === null && !profile.withdrawn
+      const payload = counted ? { ...profile, submitted: true } : profile
+      if (counted && !profile.submitted) updateProfile({ submitted: true })
+      void saveSignup({ data: payload }).then((result) => {
         if (result.ok && result.referrerName && result.referrerName !== profile.referrerName) {
           updateProfile({ referrerName: result.referrerName })
         }
@@ -78,7 +82,7 @@ function SignupPage() {
     return () => window.clearTimeout(handle)
   }, [profile, ready])
   const [companion, setCompanion] = useState<Companion>(blankCompanion())
-  const steps = stepsFor(profile.role)
+  const steps = stepsFor(profile)
   const requested = step === 'radius' ? 'place' : step
   const current = (steps as readonly string[]).includes(requested) ? (requested as StepId) : 'contact'
   const index = Math.max(0, steps.indexOf(current as (typeof steps)[number]))
@@ -100,8 +104,8 @@ function SignupPage() {
     rounds: 'Кога можеш да участваш',
     experience: 'Колко си подготвен',
     place: 'Къде е твоето място',
-    seats: 'Свободни места в колата',
-    people: 'Други хора',
+    seats: profile.role === 'mobile' ? 'Кола и дрон' : 'Свободни места в колата',
+    people: 'Хора с теб',
     review: 'Преглед, преди да се запишеш',
   }
 
@@ -117,8 +121,8 @@ function SignupPage() {
       {current === 'rounds' ? <Rounds error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'experience' ? <ExperienceStep error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'place' ? <PlaceStep error={error} onError={setError} onNext={nextStep} /> : null}
-      {current === 'seats' ? <Seats onNext={nextStep} /> : null}
-      {current === 'people' ? <People companion={companion} setCompanion={setCompanion} onNext={nextStep} /> : null}
+      {current === 'seats' ? <Seats error={error} onError={setError} onNext={nextStep} /> : null}
+      {current === 'people' ? <People companion={companion} setCompanion={setCompanion} error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'review' ? <Review error={error} onError={setError} /> : null}
       {index > 0 ? (
         <button type="button" className={`${ghost} mt-6`} onClick={() => go(steps[index - 1] ?? 'contact')}>
@@ -403,7 +407,6 @@ function toggleDistant(profile: Profile, code: string) {
 function PlaceStep({ error, onError, onNext }: { error: string; onError: (value: string) => void; onNext: () => void }) {
   const { profile } = useProfile()
   const [focus, setFocus] = useState<{ lat: number; lng: number; zoom: number } | null>(null)
-  const [showMap, setShowMap] = useState(false)
   const [geography, setGeography] = useState<{ districts: CityRegion[]; sections: PollingSection[] }>({ districts: [], sections: [] })
   const options = radiusOptions(profile.place)
   const highlighted = highlightCodes(profile.place, profile.radius, profile.distantRegionCodes)
@@ -426,7 +429,7 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
 
   return (
     <form
-      className="grid gap-4"
+      className="grid gap-6 lg:grid-cols-2 lg:items-start"
       onSubmit={(event) => {
         event.preventDefault()
         if (!placeReady(profile.place)) {
@@ -444,10 +447,7 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
         onNext()
       }}
     >
-      <button type="button" className={ghost} onClick={() => setShowMap((value) => !value)}>
-        {showMap ? 'Скрий картата' : 'Покажи картата'}
-      </button>
-      {showMap ? (
+      <div className="order-1 grid gap-3 lg:sticky lg:top-20 lg:order-2">
         <BulgariaMap
           regionCodes={highlighted}
           focus={focus}
@@ -456,10 +456,9 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
           points={mapPoints(profile.place, focus, geography)}
           onPoint={(id) => selectMapPoint(profile, id, geography)}
         />
-      ) : null}
-      {showMap && focus && profile.place?.regionCode !== '32' ? (
         <p className="text-sm leading-6">Районите са по-големите точки. Хартиените секции са зелени, машинните са сиви. Точките са в избраното място, не на точния адрес.</p>
-      ) : null}
+      </div>
+      <div className="order-2 grid gap-4 lg:order-1">
       <PlacesPicker
         deskSections
         onGeography={setGeography}
@@ -494,30 +493,58 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
       <button className={button} type="submit">
         Напред
       </button>
+      </div>
     </form>
   )
 }
 
-function Seats({ onNext }: { onNext: () => void }) {
+function YesNo({ label, value, onChange }: { label: string; value: boolean | null; onChange: (value: boolean) => void }) {
+  return (
+    <fieldset className="grid gap-2">
+      <legend className="mb-1 text-sm font-semibold">{label}</legend>
+      {([[true, 'Да'], [false, 'Не']] as const).map(([answer, text]) => (
+        <label key={text} className="flex gap-3 rounded-2xl bg-white px-4 py-3">
+          <input type="radio" checked={value === answer} onChange={() => onChange(answer)} />
+          {text}
+        </label>
+      ))}
+    </fieldset>
+  )
+}
+
+function Seats({ error, onError, onNext }: { error: string; onError: (value: string) => void; onNext: () => void }) {
   const { profile } = useProfile()
+  const mobile = profile.role === 'mobile'
+  const askSeats = !mobile || profile.hasCar === true
   return (
     <form
       className="grid gap-4"
       onSubmit={(event) => {
         event.preventDefault()
+        if (mobile && (profile.hasCar === null || profile.hasDrone === null)) {
+          onError('Отговори за колата и за дрона.')
+          return
+        }
         onNext()
       }}
     >
-      <p>Колко души можеш да вземеш, освен себе си. 0 значи, че не возиш никого.</p>
-      <div className="flex items-center justify-between gap-3">
-        <button type="button" className="h-14 w-14 rounded-full border border-[#ddd] bg-white text-3xl font-bold" onClick={() => updateProfile({ carSeats: Math.max(0, profile.carSeats - 1) })}>
-          −
-        </button>
-        <span className="text-3xl font-extrabold">{profile.carSeats}</span>
-        <button type="button" className="h-14 w-14 rounded-full border border-[#ddd] bg-white text-3xl font-bold" onClick={() => updateProfile({ carSeats: Math.min(6, profile.carSeats + 1) })}>
-          +
-        </button>
-      </div>
+      {mobile ? <YesNo label="Имаш ли кола?" value={profile.hasCar} onChange={(hasCar) => updateProfile({ hasCar, carSeats: hasCar ? profile.carSeats : 0 })} /> : null}
+      {mobile ? <YesNo label="Караш ли дрон или имаш дрон?" value={profile.hasDrone} onChange={(hasDrone) => updateProfile({ hasDrone })} /> : null}
+      {askSeats ? (
+        <>
+          <p>Колко души можеш да вземеш, освен себе си. 0 значи, че не возиш никого.</p>
+          <div className="flex items-center justify-between gap-3">
+            <button type="button" className="h-14 w-14 rounded-full border border-[#ddd] bg-white text-3xl font-bold" onClick={() => updateProfile({ carSeats: Math.max(0, profile.carSeats - 1) })}>
+              −
+            </button>
+            <span className="text-3xl font-extrabold">{profile.carSeats}</span>
+            <button type="button" className="h-14 w-14 rounded-full border border-[#ddd] bg-white text-3xl font-bold" onClick={() => updateProfile({ carSeats: Math.min(6, profile.carSeats + 1) })}>
+              +
+            </button>
+          </div>
+        </>
+      ) : null}
+      {error ? <p className="text-sm text-red-700">{error}</p> : null}
       <button className={button} type="submit">
         Напред
       </button>
@@ -528,119 +555,90 @@ function Seats({ onNext }: { onNext: () => void }) {
 function People({
   companion,
   setCompanion,
+  error,
+  onError,
   onNext,
 }: {
   companion: Companion
   setCompanion: (value: Companion) => void
+  error: string
+  onError: (value: string) => void
   onNext: () => void
 }) {
   const { profile } = useProfile()
-  const [link, setLink] = useState('')
-  useEffect(() => {
-    setLink(`${window.location.origin}/signup?ref=${ensureInviteCode(profile)}`)
-  }, [profile])
 
-  function add(mode: Companion['mode']) {
-    if (mode === 'invite') {
-      if (!validEmail(companion.email)) return
-      updateProfile({ companions: [...profile.companions, { ...blankCompanion(), mode, email: companion.email.trim(), id: crypto.randomUUID() }] })
-      setCompanion(blankCompanion())
+  function add() {
+    if (!validName(companion.firstName) || !validName(companion.lastName) || !validEmail(companion.email) || !validPhone(companion.phone)) {
+      onError('За пазител в групата трябват име, фамилия, имейл и телефон.')
       return
     }
-    if (!validName(companion.firstName) || !validName(companion.middleName) || !validName(companion.lastName) || !validEmail(companion.email) || !validPhone(companion.phone)) return
-    if (!companion.samePlace && (!companion.role || !companion.experience)) return
+    if (!companion.samePlace && !companion.role) {
+      onError('Избери роля, или остави същите място и дни като теб.')
+      return
+    }
+    onError('')
     const filled: Companion = companion.samePlace
-      ? {
-          ...companion,
-          mode,
-          role: profile.role,
-          mobileTeam: profile.mobileTeam,
-          rounds: profile.rounds,
-          experience: profile.experience,
-        }
-      : { ...companion, mode }
+      ? { ...companion, mode: 'full', role: profile.role, mobileTeam: profile.mobileTeam, rounds: profile.rounds, experience: profile.experience }
+      : { ...companion, mode: 'full' }
     updateProfile({ companions: [...profile.companions, { ...filled, id: crypto.randomUUID() }] })
     setCompanion(blankCompanion())
   }
 
   return (
     <div className="grid gap-4">
-      <p>Попълни човека, или му прати линк. Той потвърждава своя имейл.</p>
-      <article className="grid gap-3">
-        <p className="break-all text-sm">{link || 'Линкът се появява в браузъра.'}</p>
-        <button type="button" className={`${ghost} mt-3`} onClick={() => link && void navigator.clipboard.writeText(link)}>
-          Копирай линка
-        </button>
-        <label className="mt-3 grid gap-1 text-sm font-semibold">
-          Или само имейл
-          <input className={field} value={companion.mode === 'invite' ? companion.email : ''} onChange={(event) => setCompanion({ ...blankCompanion(), mode: 'invite', email: event.target.value })} />
+      <p>Ако идвате заедно, добави пазителите тук. Можеш няколко. Всеки потвърждава своя имейл. Споделянето в социалните мрежи е след записа и не ви слага в една група.</p>
+      <div className="grid gap-2">
+        <input className={field} autoComplete="given-name" placeholder="Име" value={companion.firstName} onChange={(event) => setCompanion({ ...companion, firstName: event.target.value })} />
+        <input className={field} autoComplete="additional-name" placeholder="Презиме" value={companion.middleName} onChange={(event) => setCompanion({ ...companion, middleName: event.target.value })} />
+        <input className={field} autoComplete="family-name" placeholder="Фамилия" value={companion.lastName} onChange={(event) => setCompanion({ ...companion, lastName: event.target.value })} />
+        <input className={field} autoComplete="email" placeholder="Имейл" value={companion.email} onChange={(event) => setCompanion({ ...companion, email: event.target.value })} />
+        <input className={field} autoComplete="tel" placeholder="Телефон" value={companion.phone} onChange={(event) => setCompanion({ ...companion, phone: event.target.value })} />
+        <label className="flex gap-2 text-sm leading-6">
+          <input type="checkbox" checked={companion.samePlace} onChange={(event) => setCompanion({ ...companion, samePlace: event.target.checked })} />
+          Същите място, дни и роля като мен
         </label>
-        <button type="button" className={`${ghost} mt-3`} onClick={() => add('invite')}>
-          Добави имейла
-        </button>
-      </article>
-      <article className="grid gap-3">
-        <div className="grid gap-2">
-          <input className={field} placeholder="Име" value={companion.firstName} onChange={(event) => setCompanion({ ...companion, mode: 'full', firstName: event.target.value })} />
-          <input className={field} placeholder="Презиме" value={companion.middleName} onChange={(event) => setCompanion({ ...companion, middleName: event.target.value })} />
-          <input className={field} placeholder="Фамилия" value={companion.lastName} onChange={(event) => setCompanion({ ...companion, lastName: event.target.value })} />
-          <input className={field} placeholder="Имейл" value={companion.mode === 'full' ? companion.email : ''} onChange={(event) => setCompanion({ ...companion, mode: 'full', email: event.target.value })} />
-          <input className={field} placeholder="Телефон" value={companion.phone} onChange={(event) => setCompanion({ ...companion, phone: event.target.value })} />
-          <label className="flex gap-2 text-sm">
-            <input type="checkbox" checked={companion.samePlace} onChange={(event) => setCompanion({ ...companion, samePlace: event.target.checked })} />
-            Същите място, дни, роля и опит като мен
+        {!companion.samePlace ? (
+          <label className="grid gap-1 text-sm font-semibold">
+            Роля
+            <select
+              className={field}
+              value={companion.role === 'mobile' ? 'mobile' : companion.role === 'section' ? 'section' : ''}
+              onChange={(event) => {
+                const role = (event.target.value || null) as Role | null
+                setCompanion({ ...companion, role, mobileTeam: role === 'mobile' })
+              }}
+            >
+              <option value="">Избери</option>
+              <option value="section">Секция</option>
+              <option value="mobile">Мобилен рисков екип</option>
+            </select>
           </label>
-          {!companion.samePlace ? (
-            <div className="grid gap-2 rounded-xl bg-[#f7f7f7] p-3">
-              <p className="text-sm">Те пак потвърждават своя имейл. Тук избираш вместо тях.</p>
-              <label className="grid gap-1 text-sm font-semibold">
-                Роля
-                <select
-                  className={field}
-                  value={companion.role === 'mobile' ? 'mobile' : companion.role === 'section' ? 'section' : ''}
-                  onChange={(event) => {
-                    const role = (event.target.value || null) as Role | null
-                    setCompanion({ ...companion, role, mobileTeam: role === 'mobile' })
-                  }}
-                >
-                  <option value="">Избери</option>
-                  <option value="section">Секция</option>
-                  <option value="mobile">Мобилен рисков екип</option>
-                </select>
-              </label>
-              <label className="flex gap-2 text-sm">
-                <input type="checkbox" checked={companion.rounds.first} onChange={(event) => setCompanion({ ...companion, rounds: { ...companion.rounds, first: event.target.checked } })} />
-                25 октомври
-              </label>
-              <label className="flex gap-2 text-sm">
-                <input type="checkbox" checked={companion.rounds.runoff} onChange={(event) => setCompanion({ ...companion, rounds: { ...companion.rounds, runoff: event.target.checked } })} />
-                1 ноември
-              </label>
-              <label className="grid gap-1 text-sm font-semibold">
-                Опит
-                <select className={field} value={companion.experience ?? ''} onChange={(event) => setCompanion({ ...companion, experience: (event.target.value || null) as Experience | null })}>
-                  <option value="">Избери</option>
-                  {EXPERIENCE.map((item) => (
-                    <option key={item.id} value={item.id}>{item.title}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          ) : null}
-        </div>
-        <button type="button" className={`${ghost} mt-3`} onClick={() => add('full')}>
-          Добави човека
+        ) : null}
+        <button type="button" className={ghost} onClick={add}>
+          Добави пазител
         </button>
-      </article>
-      <ul className="grid gap-2 text-sm">
-        {profile.companions.map((person) => (
-          <li key={person.id}>
-            {person.mode === 'full' ? `${person.firstName} ${person.lastName}` : person.email} · чака потвърждение
-          </li>
-        ))}
-      </ul>
+      </div>
+      {profile.companions.length > 0 ? (
+        <ul className="grid gap-2">
+          {profile.companions.map((person) => (
+            <li key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
+              <span>{person.firstName} {person.lastName}</span>
+              <button
+                type="button"
+                className="font-bold text-[#2ab9a8]"
+                onClick={() => updateProfile({ companions: profile.companions.filter((item) => item.id !== person.id) })}
+              >
+                Махни
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm leading-6">Може и без група. Повечето хора се записват сами.</p>
+      )}
+      {error ? <p className="text-sm text-red-700">{error}</p> : null}
       <button type="button" className={button} onClick={onNext}>
-        Напред
+        {profile.companions.length > 0 ? 'Напред' : 'Продължи без група'}
       </button>
     </div>
   )
@@ -679,7 +677,8 @@ function Review({ error, onError }: { error: string; onError: (value: string) =>
           <>
             <li>{placeLabel(profile.place)}</li>
             <li>{radiusOptions(profile.place).find((item) => item.id === profile.radius)?.label}</li>
-            <li>{profile.carSeats} свободни места</li>
+            {profile.role === 'mobile' ? <li>{profile.hasCar ? `Кола, ${profile.carSeats} свободни места` : 'Без кола'}</li> : profile.carSeats > 0 ? <li>{profile.carSeats} свободни места</li> : null}
+            {profile.role === 'mobile' ? <li>{profile.hasDrone ? 'Има дрон' : 'Без дрон'}</li> : null}
           </>
         ) : null}
         <li>

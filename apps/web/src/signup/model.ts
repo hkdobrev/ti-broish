@@ -51,6 +51,9 @@ export interface Profile {
   radius: Radius | null
   distantRegionCodes: string[]
   carSeats: number
+  hasCar: boolean | null
+  hasDrone: boolean | null
+  demoState: 'auto' | 'incomplete' | 'waiting' | 'assigned'
   wantsAction: boolean
   companions: Companion[]
   inviteCode: string
@@ -82,6 +85,9 @@ export const emptyProfile = (): Profile => ({
   radius: null,
   distantRegionCodes: [],
   carSeats: 0,
+  hasCar: null,
+  hasDrone: null,
+  demoState: 'auto',
   wantsAction: false,
   companions: [],
   inviteCode: '',
@@ -121,8 +127,43 @@ export const VIDEO_STEPS = ['contact', 'confirm', 'role', 'rounds', 'experience'
 
 export type StepId = (typeof SECTION_STEPS)[number]
 
-export function stepsFor(role: Role | null): readonly StepId[] {
-  return role === 'video' ? VIDEO_STEPS : SECTION_STEPS
+export function travelsOutside(radius: Radius | null) {
+  return radius === 'municipality' || radius === 'region' || radius === 'distant'
+}
+
+export function shouldAskSeats(profile: Pick<Profile, 'role' | 'radius'>) {
+  return profile.role === 'mobile' || travelsOutside(profile.radius)
+}
+
+export function stepsFor(profile: Pick<Profile, 'role' | 'radius'>): readonly StepId[] {
+  const steps = profile.role === 'video' ? VIDEO_STEPS : SECTION_STEPS
+  return steps.filter((step) => step !== 'seats' || shouldAskSeats(profile))
+}
+
+export const ASSIGNMENT_WAVES = [
+  { iso: '2026-10-05', label: '5 октомври', round: 'first' },
+  { iso: '2026-10-12', label: '12 октомври', round: 'first' },
+  { iso: '2026-10-19', label: '19 октомври', round: 'first' },
+  { iso: '2026-10-26', label: '26 октомври', round: 'runoff' },
+] as const
+
+export function nextAssignment(profile: Pick<Profile, 'rounds'>, now = new Date()) {
+  const relevant = ASSIGNMENT_WAVES.filter(
+    (wave) => (wave.round === 'first' && profile.rounds.first) || (wave.round === 'runoff' && profile.rounds.runoff),
+  )
+  const waves = relevant.length > 0 ? relevant : ASSIGNMENT_WAVES
+  const today = now.toISOString().slice(0, 10)
+  return waves.find((wave) => wave.iso >= today) ?? waves[waves.length - 1]
+}
+
+export function signupGap(profile: Profile): string | null {
+  if (!profile.firstName || !profile.email || !profile.phone) return 'Остават имената, имейлът и телефонът.'
+  if (!profile.role || profile.role === 'video') return 'Остава да избереш секция или мобилен екип.'
+  if (!profile.rounds.first && !profile.rounds.runoff) return 'Остава поне един от двата дни.'
+  if (!profile.place || !placeReady(profile.place)) return 'Остава да избереш място.'
+  if (!profile.radius) return 'Остава докъде можеш да стигнеш.'
+  if (!profile.consent) return 'Остава потвърждението, че записването е доброволно.'
+  return null
 }
 
 export function mapZoom(place: HomePlace | null, radius: Radius | null) {

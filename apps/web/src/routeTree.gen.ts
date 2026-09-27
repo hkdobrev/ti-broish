@@ -21,6 +21,7 @@ import { Route as ProtokolRouteImport } from './routes/protokol'
 import { Route as SignalRouteImport } from './routes/signal'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as VhodRouteImport } from './routes/vhod'
+import { Route as ZnachkaRouteImport } from './routes/znachka'
 import { Route as IzprateniIdRouteImport } from './routes/izprateni.$id'
 import { Route as PokanaCodeRouteImport } from './routes/pokana.$code'
 import { Route as RCodeRouteImport } from './routes/r.$code'
@@ -85,6 +86,11 @@ const VhodRoute = VhodRouteImport.update({
   path: '/vhod',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ZnachkaRoute = ZnachkaRouteImport.update({
+  id: '/znachka',
+  path: '/znachka',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IzprateniIdRoute = IzprateniIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/signal': typeof SignalRoute
   '/signup': typeof SignupRoute
   '/vhod': typeof VhodRoute
+  '/znachka': typeof ZnachkaRoute
   '/izprateni/$id': typeof IzprateniIdRoute
   '/pokana/$code': typeof PokanaCodeRoute
   '/r/$code': typeof RCodeRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/signal': typeof SignalRoute
   '/signup': typeof SignupRoute
   '/vhod': typeof VhodRoute
+  '/znachka': typeof ZnachkaRoute
   '/izprateni/$id': typeof IzprateniIdRoute
   '/pokana/$code': typeof PokanaCodeRoute
   '/r/$code': typeof RCodeRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/signal': typeof SignalRoute
   '/signup': typeof SignupRoute
   '/vhod': typeof VhodRoute
+  '/znachka': typeof ZnachkaRoute
   '/izprateni/$id': typeof IzprateniIdRoute
   '/pokana/$code': typeof PokanaCodeRoute
   '/r/$code': typeof RCodeRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/signal'
     | '/signup'
     | '/vhod'
+    | '/znachka'
     | '/izprateni/$id'
     | '/pokana/$code'
     | '/r/$code'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/signal'
     | '/signup'
     | '/vhod'
+    | '/znachka'
     | '/izprateni/$id'
     | '/pokana/$code'
     | '/r/$code'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/signal'
     | '/signup'
     | '/vhod'
+    | '/znachka'
     | '/izprateni/$id'
     | '/pokana/$code'
     | '/r/$code'
@@ -220,6 +232,7 @@ export interface RootRouteChildren {
   SignalRoute: typeof SignalRoute
   SignupRoute: typeof SignupRoute
   VhodRoute: typeof VhodRoute
+  ZnachkaRoute: typeof ZnachkaRoute
   PokanaCodeRoute: typeof PokanaCodeRoute
   RCodeRoute: typeof RCodeRoute
 }
@@ -310,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VhodRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/znachka': {
+      id: '/znachka'
+      path: '/znachka'
+      fullPath: '/znachka'
+      preLoaderRoute: typeof ZnachkaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/izprateni/$id': {
       id: '/izprateni/$id'
       path: '/$id'
@@ -359,18 +379,10 @@ const rootRouteChildren: RootRouteChildren = {
   SignalRoute: SignalRoute,
   SignupRoute: SignupRoute,
   VhodRoute: VhodRoute,
+  ZnachkaRoute: ZnachkaRoute,
   PokanaCodeRoute: PokanaCodeRoute,
   RCodeRoute: RCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

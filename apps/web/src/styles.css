@@ -201,6 +201,21 @@ main h1 {
   opacity: 0.45;
 }
 
+@media print {
+  .site-header,
+  .mobile-menu,
+  footer,
+  .no-print,
+  .h-10 {
+    display: none !important;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}
+
 .photo-input {
   position: absolute;
   width: 1px;

@@ -8,6 +8,32 @@ export function sectionDesk(section: { votersCount?: number | null; isMachine?: 
   return 'unknown'
 }
 
+export function sectionNumber(id: string) {
+  return id.length >= 3 ? id.slice(-3) : id
+}
+
+export function normalizeAddress(address: string) {
+  return address
+    .replace(/,([^\s])/g, ', $1')
+    .replace(/\.([^\s\d,.])/g, '. $1')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+export function groupSections<T extends { id: string; place: string }>(sections: T[]) {
+  const groups = new Map<string, T[]>()
+  for (const section of sections) {
+    const key = normalizeAddress(section.place).toLocaleLowerCase('bg')
+    const list = groups.get(key) ?? []
+    list.push(section)
+    groups.set(key, list)
+  }
+  return [...groups.values()].map((list) => ({
+    place: normalizeAddress(list[0]?.place ?? ''),
+    sections: list,
+  }))
+}
+
 export function spreadAround(center: { lat: number; lng: number }, index: number) {
   const angle = index * 2.399963
   const radius = 0.0032 * Math.sqrt(index + 1)
