@@ -17,6 +17,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setOpen(false)
   }, [path])
+  useEffect(() => {
+    if ('serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js')
+  }, [])
 
   return (
     <>

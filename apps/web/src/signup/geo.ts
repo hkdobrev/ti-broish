@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import type { Geometry } from 'geojson'
 
 const API = 'https://api.tibroish.bg'
 
@@ -94,14 +95,28 @@ export const fetchSections = createServerFn({ method: 'POST' })
     }))
   })
 
-export const geocodePlace = createServerFn({ method: 'POST' })
-  .validator((input: { query: string; abroad?: boolean }) => input)
-  .handler(async ({ data }) => {
+export interface GeocodeHit {
+  lat: number
+  lng: number
+  category: string
+  type: string
+  geojson: Geometry | null
+}
+
+const geocodeCache = new Map<string, GeocodeHit | null>()
+let geocodeQueue: Promise<void> = Promise.resolve()
+
+function searchNominatim(query: string, abroad: boolean, polygon: boolean) {
+  const key = `${polygon ? 'p' : 'q'}:${abroad ? 'a' : 'bg'}:${query}`
+  if (geocodeCache.has(key)) return Promise.resolve(geocodeCache.get(key) ?? null)
+  const task = geocodeQueue.then(async () => {
+    if (geocodeCache.has(key)) return geocodeCache.get(key) ?? null
     const url = new URL('https://nominatim.openstreetmap.org/search')
-    url.searchParams.set('q', data.query)
+    url.searchParams.set('q', query)
     url.searchParams.set('format', 'jsonv2')
     url.searchParams.set('limit', '1')
-    if (!data.abroad) url.searchParams.set('countrycodes', 'bg')
+    if (!abroad) url.searchParams.set('countrycodes', 'bg')
+    if (polygon) url.searchParams.set('polygon_geojson', '1')
     const response = await fetch(url, {
       headers: {
         Accept: 'application/json',
@@ -109,12 +124,30 @@ export const geocodePlace = createServerFn({ method: 'POST' })
         'User-Agent': 'ti-broish-staging/1.0 (team@tibroish.bg)',
       },
     })
-    if (!response.ok) return null
-    const rows = (await response.json()) as Array<{ lat?: string; lon?: string }>
-    const hit = rows[0]
-    if (!hit?.lat || !hit.lon) return null
-    return { lat: Number(hit.lat), lng: Number(hit.lon) }
+    let hit: GeocodeHit | null = null
+    if (response.ok) {
+      const rows = (await response.json()) as Array<{ lat?: string; lon?: string; class?: string; type?: string; geojson?: Geometry }>
+      const row = rows[0]
+      if (row?.lat && row.lon) {
+        const shape = row.geojson
+        const geojson = shape && (shape.type === 'Polygon' || shape.type === 'MultiPolygon') ? shape : null
+        hit = { lat: Number(row.lat), lng: Number(row.lon), category: row.class ?? '', type: row.type ?? '', geojson }
+      }
+    }
+    geocodeCache.set(key, hit)
+    await new Promise((resolve) => setTimeout(resolve, 1100))
+    return hit
   })
+  geocodeQueue = task.then(
+    () => undefined,
+    () => undefined,
+  )
+  return task
+}
+
+export const geocodePlace = createServerFn({ method: 'POST' })
+  .validator((input: { query: string; abroad?: boolean; polygon?: boolean }) => input)
+  .handler(async ({ data }) => searchNominatim(data.query, Boolean(data.abroad), Boolean(data.polygon)))
 
 export const SOFIA_CODES = ['23', '24', '25']
 

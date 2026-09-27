@@ -1,11 +1,13 @@
 import { useEffect, useState, type ComponentType } from 'react'
+import type { Geometry } from 'geojson'
 
 export interface MapPoint {
   id: string
   lat: number
   lng: number
   label: string
-  kind: 'district' | 'paper' | 'machine' | 'unknown'
+  detail: string
+  sectionIds: string[]
   selected?: boolean
 }
 
@@ -16,6 +18,8 @@ type MapProps = {
   onToggle?: (regionCode: string) => void
   points?: MapPoint[]
   onPoint?: (id: string) => void
+  area?: Geometry | null
+  quietCity?: boolean
 }
 
 export function BulgariaMap(props: MapProps) {

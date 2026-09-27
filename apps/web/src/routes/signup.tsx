@@ -1,6 +1,7 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { BulgariaMap, type MapPoint } from '../components/BulgariaMap'
+import type { Geometry } from 'geojson'
 import { OblastPicker } from '../components/OblastPicker'
 import { PlacesPicker } from '../components/PlacesPicker'
 import { StaffNote } from '../components/StaffNote'
@@ -27,7 +28,7 @@ import {
   type Role,
   type StepId,
 } from '../signup/model'
-import { sectionDesk, spreadAround } from '../signup/sections'
+import { addressStats, sectionDesk } from '../signup/sections'
 import { updateProfile, useProfile } from '../signup/store'
 import type { CityRegion, PollingSection } from '../signup/geo'
 
@@ -333,66 +334,15 @@ function ExperienceStep({ error, onError, onNext }: { error: string; onError: (v
   )
 }
 
-function mapPoints(
-  place: Profile['place'],
-  focus: { lat: number; lng: number; zoom: number } | null,
-  geography: { districts: CityRegion[]; sections: PollingSection[] },
-): MapPoint[] {
-  if (!focus || !place || place.regionCode === '32') return []
-  const points: MapPoint[] = geography.districts.map((district, index) => {
-    const selected = district.code === place.cityRegionCode
-    const at = selected ? focus : spreadAround(focus, index)
-    return {
-      id: `district:${district.code}`,
-      lat: at.lat,
-      lng: at.lng,
-      label: district.name,
-      kind: 'district' as const,
-      selected,
-    }
-  })
-  const showSections = geography.sections.length > 0 && (!geography.districts.length || place.cityRegionCode)
-  if (!showSections) return points
-  for (const [index, section] of geography.sections.entries()) {
-    const at = spreadAround(focus, index + Math.max(geography.districts.length, 1))
-    const desk = sectionDesk(section)
-    points.push({
-      id: `section:${section.id}`,
-      lat: at.lat,
-      lng: at.lng,
-      label: desk === 'machine' ? `${section.place} · машинна` : section.place,
-      kind: desk,
-      selected: section.id === place.sectionId,
-    })
-  }
-  return points
-}
-
-function selectMapPoint(
-  profile: Profile,
-  id: string,
-  geography: { districts: CityRegion[]; sections: PollingSection[] },
-) {
-  if (!profile.place) return
-  if (id.startsWith('district:')) {
-    const code = id.slice('district:'.length)
-    const district = geography.districts.find((item) => item.code === code)
-    if (!district) return
-    updateProfile({
-      place: {
-        ...profile.place,
-        cityRegionCode: district.code,
-        cityRegionName: district.name,
-        sectionId: undefined,
-        sectionPlace: undefined,
-      },
-    })
-    return
-  }
-  const sectionId = id.slice('section:'.length)
-  const section = geography.sections.find((item) => item.id === sectionId)
+function selectMapPoint(profile: Profile, id: string, geography: { sections: PollingSection[] }) {
+  if (!profile.place || !id.startsWith('address:')) return
+  const section = geography.sections.find((item) => item.id === id.slice('address:'.length))
   if (!section || sectionDesk(section) === 'machine') return
   updateProfile({ place: { ...profile.place, sectionId: section.id, sectionPlace: section.place } })
+}
+
+function townPlain(name: string | undefined) {
+  return (name ?? '').replace(/^(гр\.|с\.|к\.|ман\.)\s*/u, '')
 }
 
 function toggleDistant(profile: Profile, code: string) {
@@ -407,6 +357,8 @@ function toggleDistant(profile: Profile, code: string) {
 function PlaceStep({ error, onError, onNext }: { error: string; onError: (value: string) => void; onNext: () => void }) {
   const { profile } = useProfile()
   const [focus, setFocus] = useState<{ lat: number; lng: number; zoom: number } | null>(null)
+  const [area, setArea] = useState<Geometry | null>(null)
+  const [points, setPoints] = useState<MapPoint[]>([])
   const [geography, setGeography] = useState<{ districts: CityRegion[]; sections: PollingSection[] }>({ districts: [], sections: [] })
   const options = radiusOptions(profile.place)
   const highlighted = highlightCodes(profile.place, profile.radius, profile.distantRegionCodes)
@@ -416,16 +368,55 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
   useEffect(() => {
     if (!query || zoom == null) {
       setFocus(null)
+      setArea(null)
       return
     }
     let cancelled = false
-    void geocodePlace({ data: { query, abroad: profile.place?.regionCode === '32' } }).then((hit) => {
-      if (!cancelled) setFocus(hit ? { lat: hit.lat, lng: hit.lng, zoom } : null)
+    const district = Boolean(profile.place?.cityRegionName)
+    void geocodePlace({ data: { query, abroad: profile.place?.regionCode === '32', polygon: district } }).then((hit) => {
+      if (cancelled) return
+      setFocus(hit ? { lat: hit.lat, lng: hit.lng, zoom } : null)
+      setArea(district ? hit?.geojson ?? null : null)
     })
     return () => {
       cancelled = true
     }
-  }, [query, zoom, profile.place?.regionCode])
+  }, [query, zoom, profile.place?.regionCode, profile.place?.cityRegionName])
+  const addressKey = geography.sections.map((section) => section.id).join(',')
+  useEffect(() => {
+    const groups = addressStats(geography.sections)
+    const town = townPlain(profile.place?.townName)
+    if (!town || profile.place?.regionCode === '32' || groups.length === 0 || (geography.districts.length > 0 && !profile.place?.cityRegionCode)) {
+      setPoints([])
+      return
+    }
+    let cancelled = false
+    setPoints([])
+    void (async () => {
+      const next: MapPoint[] = []
+      for (const group of groups.slice(0, 25)) {
+        if (cancelled) return
+        const hit = await geocodePlace({ data: { query: `${group.place}, ${town}, България` } })
+        if (cancelled || !hit || hit.category === 'boundary' || hit.type === 'city' || hit.type === 'administrative') continue
+        const paperSection = group.sections.find((section) => sectionDesk(section) === 'paper')
+        if (!paperSection) continue
+        const unknown = group.unknown > 0 ? `, ${group.unknown} без брой` : ''
+        next.push({
+          id: `address:${paperSection.id}`,
+          lat: hit.lat,
+          lng: hit.lng,
+          label: group.place,
+          detail: `${group.sections.length} секции, ${group.paper} хартиени, ${group.machine} машинни${unknown}`,
+          sectionIds: group.sections.map((section) => section.id),
+          selected: false,
+        })
+        if (!cancelled) setPoints([...next])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [addressKey, geography.districts.length, geography.sections, profile.place?.cityRegionCode, profile.place?.regionCode, profile.place?.townName])
 
   return (
     <form
@@ -453,10 +444,14 @@ function PlaceStep({ error, onError, onNext }: { error: string; onError: (value:
           focus={focus}
           interactive={profile.radius === 'distant' && profile.place?.regionCode !== '32'}
           onToggle={(code) => toggleDistant(profile, code)}
-          points={mapPoints(profile.place, focus, geography)}
+          points={points.map((point) => ({ ...point, selected: point.sectionIds.includes(profile.place?.sectionId ?? '') }))}
           onPoint={(id) => selectMapPoint(profile, id, geography)}
+          area={area}
+          quietCity={Boolean(profile.place?.cityRegionName)}
         />
-        <p className="text-sm leading-6">Районите са по-големите точки. Хартиените секции са зелени, машинните са сиви. Точките са в избраното място, не на точния адрес.</p>
+        {points.length > 0 ? (
+          <p className="text-sm leading-6">Всяка точка е адрес с хартиена секция. В прозореца са адресът, броят секции и колко са хартиени или машинни.</p>
+        ) : null}
       </div>
       <div className="order-2 grid gap-4 lg:order-1">
       <PlacesPicker

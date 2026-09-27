@@ -34,6 +34,17 @@ export function groupSections<T extends { id: string; place: string }>(sections:
   }))
 }
 
+export function addressStats<T extends { id: string; place: string; votersCount?: number | null; isMachine?: boolean | null }>(sections: T[]) {
+  return groupSections(sections)
+    .map((group) => {
+      const paper = group.sections.filter((section) => sectionDesk(section) === 'paper').length
+      const machine = group.sections.filter((section) => sectionDesk(section) === 'machine').length
+      const unknown = group.sections.length - paper - machine
+      return { ...group, paper, machine, unknown }
+    })
+    .filter((group) => group.paper > 0)
+}
+
 export function spreadAround(center: { lat: number; lng: number }, index: number) {
   const angle = index * 2.399963
   const radius = 0.0032 * Math.sqrt(index + 1)
