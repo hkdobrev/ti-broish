@@ -12,8 +12,8 @@ export interface StarterSiteIdentitySettings {
 	favicon?: MediaReference;
 }
 
-const DEFAULT_SITE_TITLE = "My Site";
-const DEFAULT_SITE_TAGLINE = "Built with EmDash";
+const DEFAULT_SITE_TITLE = "Ти Броиш";
+const DEFAULT_SITE_TAGLINE = "Пазители на вота за всяка секция.";
 
 export function resolveStarterSiteIdentity(settings?: StarterSiteIdentitySettings) {
 	return {

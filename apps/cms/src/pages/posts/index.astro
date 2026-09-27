@@ -28,12 +28,12 @@ const postsWithTags = posts.map((post) => ({
 }));
 ---
 
-<Base title="All Posts">
-	<h1>Posts</h1>
+<Base title="Актуално">
+	<h1>Актуално</h1>
 
 	{
 		postsWithTags.length === 0 ? (
-			<p>No posts yet.</p>
+			<p>Още няма публикации.</p>
 		) : (
 			<ul>
 				{postsWithTags.map(({ post, tags }) => (
