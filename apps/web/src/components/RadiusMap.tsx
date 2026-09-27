@@ -21,8 +21,8 @@ export function RadiusMap({
             <path
               key={oblast.id}
               d={oblast.d}
-              fill={on ? '#70bca4' : '#fff'}
-              stroke="#24082c"
+              fill={on ? '#71bea5' : '#fff'}
+              stroke="#27082d"
               strokeWidth={on ? 2.2 : 1}
               className={interactive ? 'cursor-pointer' : undefined}
               onClick={interactive && toggleCode ? () => onToggle?.(toggleCode) : undefined}

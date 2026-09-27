@@ -73,7 +73,7 @@ export function OblastPicker({ profile }: { profile: Profile }) {
             <li key={oblast.id}>
               <button
                 type="button"
-                className="min-h-11 rounded-full bg-[#70bca4] px-4 font-bold text-[#24082c]"
+                className="min-h-11 rounded-full bg-[#71bea5] px-4 font-bold text-[#27082d]"
                 onClick={() => toggleCode(profile, oblast.regionCodes[0] ?? '')}
               >
                 {oblast.name} ×
