@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getRequestUrl, setCookie } from '@tanstack/react-start/server'
-import { SESSION_COOKIE, signupDatabase } from './db-core'
-import { deliverMail, importConfirmMail } from './mail'
+import { getRequestUrl } from '@tanstack/react-start/server'
+import { signupDatabase } from './db-core'
+import { companionConfirmMail, deliverMail } from './mail'
 import type { Companion, Profile } from './model'
 
 function origin() {
@@ -24,50 +24,65 @@ export async function syncCompanions(
     .bind(signupId)
     .all<{ id: string; email: string; email_confirmed: number | null; confirm_token: string | null }>()
   const prior = new Map((previous.results ?? []).map((row) => [row.id, row]))
-  await db.prepare('DELETE FROM companions WHERE signup_id = ?').bind(signupId).run()
   const mailed: { email: string; link: string }[] = []
   const nextCompanions: Companion[] = []
+  const kept = new Set<string>()
   for (const person of companions) {
+    const id = person.id || crypto.randomUUID()
+    kept.add(id)
     const email = person.email.trim().toLowerCase()
-    const old = prior.get(person.id)
-    const sameEmail = old && old.email === email
-    let confirmed = person.status === 'confirmed' || (sameEmail && old?.email_confirmed === 1)
-    let token = sameEmail && old?.confirm_token ? old.confirm_token : null
-    if (!confirmed && email) {
-      token = token || secretToken()
+    const old = prior.get(id)
+    const sameEmail = Boolean(old && old.email === email)
+    // Only a stored confirm, or the same email still confirmed, counts. The client cannot set this.
+    const confirmed = Boolean(sameEmail && old?.email_confirmed === 1)
+    let token = confirmed ? null : sameEmail && old?.confirm_token ? old.confirm_token : null
+    const freshToken = Boolean(!confirmed && email && !token)
+    if (freshToken) token = secretToken()
+    const values = [
+      person.inGroup === false ? 0 : 1,
+      person.firstName,
+      person.middleName,
+      person.lastName,
+      email,
+      person.phone,
+      person.role,
+      person.samePlace ? 1 : 0,
+      confirmed ? 1 : 0,
+      token,
+    ]
+    if (old) {
+      await db
+        .prepare(
+          `UPDATE companions SET
+             in_group = ?, first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?, role = ?, same_place = ?, email_confirmed = ?, confirm_token = ?
+           WHERE id = ? AND signup_id = ?`,
+        )
+        .bind(...values, id, signupId)
+        .run()
+    } else {
+      await db
+        .prepare(
+          `INSERT INTO companions (
+             id, signup_id, in_group, first_name, middle_name, last_name, email, phone, role, same_place, email_confirmed, confirm_token
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(id, signupId, ...values)
+        .run()
     }
-    if (confirmed) token = null
-    await db
-      .prepare(
-        `INSERT INTO companions (
-           id, signup_id, in_group, first_name, middle_name, last_name, email, phone, role, same_place, email_confirmed, confirm_token
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .bind(
-        person.id || crypto.randomUUID(),
-        signupId,
-        person.inGroup === false ? 0 : 1,
-        person.firstName,
-        person.middleName,
-        person.lastName,
-        email,
-        person.phone,
-        person.role,
-        person.samePlace ? 1 : 0,
-        confirmed ? 1 : 0,
-        token,
-      )
-      .run()
-    if (!confirmed && token && email && !(sameEmail && old?.confirm_token)) {
+    if (freshToken && token) {
       const link = `${origin()}/potvardi?companion=${token}`
-      const sent = await deliverMail(importConfirmMail(email, link))
+      const sent = await deliverMail(companionConfirmMail(email, link))
       if (!sent) mailed.push({ email, link })
     }
     nextCompanions.push({
       ...person,
+      id,
       email,
       status: confirmed ? 'confirmed' : 'pending',
     })
+  }
+  for (const row of previous.results ?? []) {
+    if (!kept.has(row.id)) await db.prepare('DELETE FROM companions WHERE id = ? AND signup_id = ?').bind(row.id, signupId).run()
   }
   return { companions: nextCompanions, pendingLinks: mailed }
 }
@@ -100,12 +115,12 @@ export const previewCompanion = createServerFn({ method: 'POST' })
     if (!db || token.length < 16) return { ok: false as const }
     const row = await db
       .prepare(
-        `SELECT c.first_name AS first_name, c.email AS email, COALESCE(c.email_confirmed, 0) AS email_confirmed, s.session_token AS session_token
-         FROM companions c JOIN signups s ON s.id = c.signup_id
+        `SELECT c.first_name AS first_name, c.email AS email, COALESCE(c.email_confirmed, 0) AS email_confirmed
+         FROM companions c
          WHERE c.confirm_token = ?`,
       )
       .bind(token)
-      .first<{ first_name: string; email: string; email_confirmed: number; session_token: string | null }>()
+      .first<{ first_name: string; email: string; email_confirmed: number }>()
     if (!row) return { ok: false as const }
     return {
       ok: true as const,
@@ -124,12 +139,12 @@ export const confirmCompanion = createServerFn({ method: 'POST' })
     if (!db || token.length < 16) return { ok: false as const, message: 'Линкът не е валиден.' }
     const row = await db
       .prepare(
-        `SELECT c.id AS id, c.signup_id AS signup_id, s.session_token AS session_token, s.payload AS payload
+        `SELECT c.id AS id, c.signup_id AS signup_id, s.payload AS payload
          FROM companions c JOIN signups s ON s.id = c.signup_id
          WHERE c.confirm_token = ?`,
       )
       .bind(token)
-      .first<{ id: string; signup_id: string; session_token: string | null; payload: string }>()
+      .first<{ id: string; signup_id: string; payload: string }>()
     if (!row) return { ok: false as const, message: 'Линкът не е валиден или вече е използван.' }
     const now = new Date().toISOString()
     await db
@@ -146,10 +161,7 @@ export const confirmCompanion = createServerFn({ method: 'POST' })
         .bind(JSON.stringify(profile), now, row.signup_id)
         .run()
     } catch {
-      /* payload sync is best-effort */
-    }
-    if (row.session_token) {
-      setCookie(SESSION_COOKIE, row.session_token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 180 })
+      /* payload sync is best-effort; the companion row is already confirmed */
     }
     return { ok: true as const, message: 'Имейлът е потвърден. Благодаря!' }
   })

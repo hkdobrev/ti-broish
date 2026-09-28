@@ -55,6 +55,7 @@ function ProfilePage() {
   const [inviteLink, setInviteLink] = useState('')
   const [referralCount, setReferralCount] = useState(0)
   const [synced, setSynced] = useState(false)
+  const [unsentCompanionLinks, setUnsentCompanionLinks] = useState<{ email: string; link: string }[]>([])
   const skipSave = useRef(true)
   useEffect(() => {
     if (!profile.emailConfirmed) return
@@ -83,7 +84,9 @@ function ProfilePage() {
     }
     if (!profile.email.includes('@')) return
     const handle = window.setTimeout(() => {
-      void saveSignup({ data: profile })
+      void saveSignup({ data: profile }).then((result) => {
+        if (result.ok && result.pendingLinks.length > 0) setUnsentCompanionLinks(result.pendingLinks)
+      })
     }, 600)
     return () => window.clearTimeout(handle)
   }, [synced, profile])
@@ -179,12 +182,19 @@ function ProfilePage() {
         {inviteLink ? <ShareSignup link={inviteLink} count={referralCount} /> : null}
         {profile.companions.length > 0 ? (
           <ul className="grid gap-2">
-            {profile.companions.map((person) => (
-              <li key={person.id}>
-                {person.firstName} {person.lastName} ·{' '}
-                {person.status === 'confirmed' ? 'потвърден имейл' : 'чака потвърждение'}
-              </li>
-            ))}
+            {profile.companions.map((person) => {
+              const unsent = person.status === 'confirmed' ? undefined : unsentCompanionLinks.find((item) => item.email === person.email)
+              return (
+                <li key={person.id}>
+                  {person.firstName} {person.lastName} · {person.status === 'confirmed' ? 'потвърден имейл' : 'чака потвърждение'}
+                  {unsent ? (
+                    <span className="block text-sm text-[#666]">
+                      Писмото не тръгна. Прати им линка: <a href={unsent.link}>{unsent.link}</a>
+                    </span>
+                  ) : null}
+                </li>
+              )
+            })}
           </ul>
         ) : null}
         <p>

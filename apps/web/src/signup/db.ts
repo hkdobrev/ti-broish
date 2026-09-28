@@ -130,7 +130,12 @@ export const saveSignup = createServerFn({ method: 'POST' })
     const countRow = data.referralCode
       ? await db.prepare('SELECT COUNT(*) AS n FROM signups WHERE referred_by = ?').bind(data.referralCode).first<{ n: number }>()
       : null
-    return { ok: true as const, referrerName: await referrerName(db, columns.referredBy), referralCount: countRow?.n ?? 0 }
+    return {
+      ok: true as const,
+      referrerName: await referrerName(db, columns.referredBy),
+      referralCount: countRow?.n ?? 0,
+      pendingLinks: synced.pendingLinks,
+    }
   })
 
 export const loadSignup = createServerFn({ method: 'GET' }).handler(async () => {

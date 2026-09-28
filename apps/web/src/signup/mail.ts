@@ -56,6 +56,22 @@ export function importConfirmMail(email: string, link: string): OutboundMail {
   }
 }
 
+export function companionConfirmMail(email: string, link: string): OutboundMail {
+  const text = [
+    'Поканиха те в група за пазене на вота в Ти Броиш.',
+    `Отвори линка, за да потвърдиш, че си в групата: ${link}`,
+    'Записването е за президентските избори 2026 г. на 25 октомври и 1 ноември.',
+    'Това е доброволна дейност без заплащане. Ще бъдете представител на Инициативния комитет за кандидат-президентската двойка Андрей Гюров и Георги Кандев.',
+  ].join('\n\n')
+  const href = escapeHtml(link)
+  return {
+    to: email,
+    subject: 'Потвърди, че си в групата — Ти Броиш',
+    text,
+    html: `<p>Поканиха те в група за пазене на вота в Ти Броиш.</p><p><a href="${href}">Потвърди, че си в групата</a></p><p>Ако бутонът не се отваря, копирай този адрес:<br>${href}</p><p>Записването е за президентските избори 2026 г. на 25 октомври и 1 ноември.</p><p>Това е доброволна дейност без заплащане. Ще бъдете представител на Инициативния комитет за кандидат-президентската двойка Андрей Гюров и Георги Кандев.</p>`,
+  }
+}
+
 export function assignmentMail(email: string, section: string, address: string, link: string): OutboundMail {
   const place = address.trim() || 'адресът е в профила ти'
   const text = [

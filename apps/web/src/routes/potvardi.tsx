@@ -65,19 +65,21 @@ function ConfirmImportedPage() {
         }
       />
       <p>{preview.email}</p>
-      {preview.confirmed ? <p>Този имейл вече е потвърден.</p> : null}
+      {preview.confirmed ? <p>{isCompanion ? 'Участието е потвърдено. Можеш да затвориш тази страница.' : 'Този имейл вече е потвърден.'}</p> : null}
       {message ? <p className="text-sm text-red-700">{message}</p> : null}
+      {preview.confirmed ? null : (
       <button
         type="button"
         className="brand-button"
         onClick={() => {
           if (isCompanion) {
-            void confirmCompanion({ data: { token: companionToken } }).then(async (result) => {
+            void confirmCompanion({ data: { token: companionToken } }).then((result) => {
               if (!result.ok) {
                 setMessage(result.message)
                 return
               }
-              await navigate({ to: '/profil' })
+              setMessage('')
+              setPreview({ ...preview, confirmed: true })
             })
             return
           }
@@ -92,6 +94,7 @@ function ConfirmImportedPage() {
       >
         {isCompanion ? 'Потвърди участието' : 'Потвърди и отвори профила'}
       </button>
+      )}
     </div>
   )
 }
