@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { emptyProfile, type Profile } from '../src/signup/model'
 
-export const SIGNUP_STORAGE_KEY = 'ti-broish-signup-prototype-v1'
+export const SIGNUP_STORAGE_KEY = 'ti-broish-signup-v1'
 
 // Playwright does not define the order of init scripts. A later seed must still
 // replace an earlier one when a test calls seedProfile twice.
