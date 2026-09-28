@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { PageIntro } from '../../components/SiteChrome'
 import { adminExport, adminImportPeople, adminResendImports, adminRoster } from '../../signup/admin'
 import type { RosterFields } from '../../signup/admin-csv'
-import { BrevoCampaignPanel } from './brevo-campaign-panel'
+import { BrevoCampaignPanel } from './-brevo-campaign-panel'
 
 export const Route = createFileRoute('/admin/signups')({
   component: SignupsPage,

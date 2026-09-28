@@ -66,10 +66,12 @@ export async function createEmailCampaign(
   }
   if (input.templateId) body.templateId = input.templateId
   else body.htmlContent = input.htmlContent ?? defaultCampaignHtml()
-  return brevoFetch(config.apiKey, '/emailCampaigns', {
+  const created = await brevoFetch(config.apiKey, '/emailCampaigns', {
     method: 'POST',
     body: JSON.stringify(body),
-  }) as Promise<{ id: number }>
+  })
+  if (typeof created === 'object' && created && 'id' in created && typeof created.id === 'number') return { id: created.id }
+  throw new Error('Brevo не върна номер на кампанията.')
 }
 
 export async function sendEmailCampaignNow(config: BrevoConfig, campaignId: number) {

@@ -13,7 +13,7 @@ import { parseStaffRole, roleAllows, type StaffAction, type StaffRole } from './
 type Database = SignupD1
 type Denial = { ok: false; state: 'signed-out' | 'unconfirmed' | 'forbidden' | 'nodb'; email: string; message: string }
 
-const VIEWS: RosterView[] = ['all', 'assigned', 'unassigned', 'draft', 'abroad', 'mir']
+const VIEWS: RosterView[] = ['all', 'assigned', 'unassigned', 'draft', 'abroad', 'mir', 'calls']
 
 export const adminBrevoStatus = createServerFn({ method: 'POST' })
   .handler(async () => {
@@ -76,7 +76,7 @@ export const adminBrevoPrepareCampaign = createServerFn({ method: 'POST' })
     }))
 
     try {
-      const imported = await importContactsToList(config, contacts, config.listId)
+      await importContactsToList(config, contacts, config.listId)
       const subject = data.subject.trim() || 'Кампания Ти Броиш'
       const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ')
       const campaign = await createEmailCampaign(config, {
@@ -95,7 +95,6 @@ export const adminBrevoPrepareCampaign = createServerFn({ method: 'POST' })
         contacts: contacts.length,
         campaignId: campaign.id,
         sent,
-        importProcess: imported,
         message: sent
           ? `Кампания ${campaign.id} е създадена и пратена към списък ${config.listId} (${contacts.length} контакта).`
           : `Кампания ${campaign.id} е създадена като чернова за списък ${config.listId} (${contacts.length} контакта). Изпрати я от Brevo или с sendNow.`,
