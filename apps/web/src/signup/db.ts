@@ -2,7 +2,8 @@ import { createServerFn } from '@tanstack/react-start'
 import { getCookie, setCookie } from '@tanstack/react-start/server'
 import { profileFrom, SESSION_COOKIE, signupDatabase, type SignupRow } from './db-core'
 import { type Profile } from './model'
-import { companionRows, egnProblem, signupColumns } from './record'
+import { companionsForSignup, syncCompanions } from './companion-lifecycle'
+import { egnProblem, signupColumns } from './record'
 
 async function referrerName(db: NonNullable<Awaited<ReturnType<typeof signupDatabase>>>, code: string | null) {
   if (!code) return null
@@ -17,7 +18,8 @@ async function referrerName(db: NonNullable<Awaited<ReturnType<typeof signupData
 
 export const saveSignup = createServerFn({ method: 'POST' })
   .validator((profile: Profile) => profile)
-  .handler(async ({ data }) => {
+  .handler(async ({ data: input }) => {
+    let data = input
     const db = await signupDatabase()
     if (!db || !data.email.trim()) return { ok: false as const, message: 'Няма запис.' }
     const problem = egnProblem(data.egn)
@@ -121,16 +123,9 @@ export const saveSignup = createServerFn({ method: 'POST' })
         now,
       )
       .run()
-    await db.prepare('DELETE FROM companions WHERE signup_id = ?').bind(id).run()
-    for (const person of companionRows(data.companions)) {
-      await db
-        .prepare(
-          `INSERT INTO companions (id, signup_id, in_group, first_name, middle_name, last_name, email, phone, role, same_place)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .bind(person.id || crypto.randomUUID(), id, person.inGroup, person.firstName, person.middleName, person.lastName, person.email, person.phone, person.role, person.samePlace)
-        .run()
-    }
+    const synced = await syncCompanions(db, id, data.companions)
+    data = { ...data, companions: synced.companions }
+    await db.prepare('UPDATE signups SET payload = ? WHERE id = ?').bind(signupColumns(data).payload, id).run()
     setCookie(SESSION_COOKIE, token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 180 })
     const countRow = data.referralCode
       ? await db.prepare('SELECT COUNT(*) AS n FROM signups WHERE referred_by = ?').bind(data.referralCode).first<{ n: number }>()
@@ -149,6 +144,7 @@ export const loadSignup = createServerFn({ method: 'GET' }).handler(async () => 
     .first<SignupRow>()
   if (!row) return null
   const profile = profileFrom(row)
+  profile.companions = await companionsForSignup(db, row.id, profile.companions)
   const countRow = profile.referralCode
     ? await db.prepare('SELECT COUNT(*) AS n FROM signups WHERE referred_by = ?').bind(profile.referralCode).first<{ n: number }>()
     : null
