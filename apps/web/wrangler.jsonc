@@ -51,7 +51,11 @@
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
-	// "vars": {  "MY_VARIABLE": "production_value" }
+	// Secrets (set via CLI, do not commit values):
+	//   wrangler secret put BREVO_API_KEY
+	// Optional vars after the key exists:
+	//   BREVO_LIST_ID, BREVO_TEMPLATE_ID, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME
+	// "vars": {  "BREVO_LIST_ID": "123", "BREVO_TEMPLATE_ID": "456", "BREVO_SENDER_EMAIL": "noreply@tibroish.bg", "BREVO_SENDER_NAME": "Ти Броиш" }
 	/**
 	 * Static Assets
 	 * https://developers.cloudflare.com/workers/static-assets/binding/
