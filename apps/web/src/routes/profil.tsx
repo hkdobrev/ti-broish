@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
+import { AssignedSectionMap } from '../components/AssignedSectionMap'
 import { PageIntro } from '../components/SiteChrome'
 import { ShareSignup } from '../components/ShareSignup'
 import { StaffNote } from '../components/StaffNote'
@@ -150,6 +151,7 @@ function ProfilePage() {
           <p className="text-lg leading-7">
             {profile.rounds.first ? '25 октомври' : '1 ноември'}. Секцията е публикувана от екипа.
           </p>
+          {profile.assignedSection ? <AssignedSectionMap place={profile.place} section={profile.assignedSection} /> : null}
           <Link to="/znachka" className="brand-button">
             Отпечатай значката
           </Link>
@@ -248,4 +250,3 @@ function resumeStep(profile: Profile) {
   if (!profile.radius) return 'travel' as const
   return 'review' as const
 }
-
