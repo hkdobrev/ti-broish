@@ -1,3 +1,4 @@
+import { migrateCompanionColumns } from './db-core-migrate-companions'
 import { env } from 'cloudflare:workers'
 import { visibleSection } from './admin-csv'
 import { emptyProfile, type Profile } from './model'
@@ -135,6 +136,7 @@ export async function signupDatabase() {
     }
   }
   await db.prepare(COMPANIONS).run()
+  await migrateCompanionColumns(db)
   await db.prepare(TAKEN).run()
   await db.prepare(STAFF).run()
   for (const sql of INDEXES) await db.prepare(sql).run()
