@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react'
 import { emptyProfile, type Profile } from './model'
 
-const KEY = 'ti-broish-signup-prototype-v1'
+const KEY = 'ti-broish-signup-v1'
+const LEGACY_KEY = 'ti-broish-signup-prototype-v1'
 
 const listeners = new Set<() => void>()
 
+/** localStorage is a cache only. D1 + tb_session is the source of truth after loadSignup. */
 function read(): Profile {
   if (typeof window === 'undefined') return emptyProfile()
   try {
-    const raw = window.localStorage.getItem(KEY)
+    let raw = window.localStorage.getItem(KEY)
+    if (!raw) {
+      const legacy = window.localStorage.getItem(LEGACY_KEY)
+      if (legacy) {
+        window.localStorage.setItem(KEY, legacy)
+        window.localStorage.removeItem(LEGACY_KEY)
+        raw = legacy
+      }
+    }
     if (!raw) return emptyProfile()
     const parsed = JSON.parse(raw) as Partial<Profile> & { demoState?: unknown }
     delete parsed.demoState
@@ -48,20 +58,3 @@ export function useProfile() {
 
 export function ensureReferralCode(profile: Profile) {
   const existing = profile.referralCode || profile.inviteCode
-  if (existing) {
-    if (profile.referralCode !== existing || profile.inviteCode !== existing) {
-      updateProfile({ referralCode: existing, inviteCode: existing })
-    }
-    return existing
-  }
-  const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-  const bytes = crypto.getRandomValues(new Uint8Array(6))
-  let code = ''
-  for (const byte of bytes) code += alphabet[byte % alphabet.length]
-  updateProfile({ referralCode: code, inviteCode: code })
-  return code
-}
-
-export function ensureInviteCode(profile: Profile) {
-  return ensureReferralCode(profile)
-}
