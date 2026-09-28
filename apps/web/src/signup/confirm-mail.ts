@@ -1,8 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
 import { setCookie } from '@tanstack/react-start/server'
 import { SESSION_COOKIE, signupDatabase } from './db-core'
-import { confirmCodeMail, deliverMail } from './mail'
-import { codeFor, emptyProfile, validEmail } from './model'
+import { confirmCodeMail, deliverMail, isDevMailHost } from './mail'
+import { emptyProfile, validEmail } from './model'
 import { signupColumns } from './record'
 
 const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -24,10 +24,9 @@ export const requestEmailCode = createServerFn({ method: 'POST' })
   .validator((input: { email: string; firstName: string; middleName: string; lastName: string; phone: string }) => input)
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase()
-    const previewCode = codeFor(email)
-    if (!validEmail(email)) return { sent: false, previewCode }
+    if (!validEmail(email)) return { sent: false, previewCode: '' }
     const db = await signupDatabase()
-    if (!db) return { sent: false, previewCode }
+    if (!db) return { sent: false, previewCode: isDevMailHost() ? '000000' : '' }
     const code = sixDigit()
     const now = new Date().toISOString()
     const referral = referralCode()
@@ -59,8 +58,10 @@ export const requestEmailCode = createServerFn({ method: 'POST' })
     }
     const sent = await deliverMail(confirmCodeMail(email, code))
     if (!sent) {
-      await db.prepare('UPDATE signups SET email_code = NULL WHERE email = ?').bind(email).run()
-      return { sent: false, previewCode }
+      if (!isDevMailHost()) {
+        await db.prepare('UPDATE signups SET email_code = NULL WHERE email = ?').bind(email).run()
+      }
+      return { sent: false, previewCode: isDevMailHost() ? code : '' }
     }
     return { sent: true, previewCode: '' }
   })
@@ -71,13 +72,13 @@ export const checkEmailCode = createServerFn({ method: 'POST' })
     const email = data.email.trim().toLowerCase()
     const code = data.code.trim()
     const db = await signupDatabase()
-    if (!db) return { ok: code === codeFor(email) }
+    if (!db) return { ok: false }
     const row = await db
       .prepare('SELECT email_code, session_token FROM signups WHERE email = ?')
       .bind(email)
       .first<{ email_code: string | null; session_token: string | null }>()
-    const expected = row?.email_code || codeFor(email)
-    if (!code || code !== expected) return { ok: false }
+    const expected = row?.email_code
+    if (!code || !expected || code !== expected) return { ok: false }
     await db.prepare('UPDATE signups SET email_confirmed = 1, email_code = NULL, updated_at = ? WHERE email = ?').bind(new Date().toISOString(), email).run()
     if (row?.session_token) sessionCookie(row.session_token)
     return { ok: true }

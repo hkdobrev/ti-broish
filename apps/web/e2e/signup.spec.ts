@@ -22,7 +22,7 @@ test('a partner link is shown and stored as a source', async ({ page }) => {
   await page.getByLabel('ЕГН').fill('0041010003')
   await page.getByRole('button', { name: 'Напред' }).click()
   await expect(page.getByText('ЕГН е 10 цифри')).toBeVisible()
-  const stored = await page.evaluate(() => window.localStorage.getItem('ti-broish-signup-prototype-v1'))
+  const stored = await page.evaluate((key) => window.localStorage.getItem(key), SIGNUP_STORAGE_KEY)
   expect(stored).toContain('iaz.bg')
 })
 

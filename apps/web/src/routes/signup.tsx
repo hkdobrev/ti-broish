@@ -11,7 +11,6 @@ import { geocodePlace } from '../signup/geo'
 import {
   EXPERIENCE,
   assignmentLocked,
-  codeFor,
   highlightCodes,
   placeLabel,
   placeOutline,
@@ -52,6 +51,7 @@ function SignupPage() {
   const navigate = useNavigate()
   const { profile, ready } = useProfile()
   const [error, setError] = useState('')
+  const [mailFailed, setMailFailed] = useState(false)
   useEffect(() => {
     const found = campaignFromSearch(new URLSearchParams(window.location.search))
     if (!found.source && !found.referredBy) return
@@ -134,8 +134,8 @@ function SignupPage() {
         <p className="text-lg leading-7">Записването е за президентските избори 2026 г. на 25 октомври и 1 ноември. Можеш да добавиш и други хора и да отидете заедно като група.</p>
       ) : null}
       {profile.referredBy ? <p>Покана от {profile.referrerName || 'човек, който вече се е записал'}.</p> : null}
-      {current === 'contact' ? <Contact error={error} onError={setError} onNext={() => go(profile.emailConfirmed ? (profile.egn ? 'role' : 'egn') : 'confirm')} /> : null}
-      {current === 'confirm' ? <Confirm error={error} onError={setError} onNext={() => go('egn')} /> : null}
+      {current === 'contact' ? <Contact error={error} onError={setError} onMailFailed={setMailFailed} onNext={() => go(profile.emailConfirmed ? (profile.egn ? 'role' : 'egn') : 'confirm')} /> : null}
+      {current === 'confirm' ? <Confirm error={error} onError={setError} mailFailed={mailFailed} onMailFailed={setMailFailed} onNext={() => go('egn')} /> : null}
       {current === 'egn' ? <EgnStep error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'role' ? <RoleStep error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'rounds' ? <Rounds error={error} onError={setError} onNext={nextStep} /> : null}
@@ -154,7 +154,7 @@ function SignupPage() {
   )
 }
 
-function Contact({ error, onError, onNext }: { error: string; onError: (value: string) => void; onNext: () => void }) {
+function Contact({ error, onError, onMailFailed, onNext }: { error: string; onError: (value: string) => void; onMailFailed: (failed: boolean) => void; onNext: () => void }) {
   const { profile } = useProfile()
   return (
     <form
@@ -178,8 +178,14 @@ function Contact({ error, onError, onNext }: { error: string; onError: (value: s
             phone: profile.phone,
           },
         })
-          .then((result) => updateProfile({ confirmCode: result.previewCode }))
-          .catch(() => updateProfile({ confirmCode: codeFor(profile.email) }))
+          .then((result) => {
+            updateProfile({ confirmCode: result.previewCode })
+            onMailFailed(!result.sent && !result.previewCode)
+          })
+          .catch(() => {
+            updateProfile({ confirmCode: '' })
+            onMailFailed(true)
+          })
           .finally(onNext)
       }}
     >
@@ -220,10 +226,44 @@ function NameFields() {
   )
 }
 
-function Confirm({ error, onError, onNext }: { error: string; onError: (value: string) => void; onNext: () => void }) {
+function Confirm({
+  error,
+  onError,
+  onNext,
+  mailFailed,
+  onMailFailed,
+}: {
+  error: string
+  onError: (value: string) => void
+  onNext: () => void
+  mailFailed: boolean
+  onMailFailed: (failed: boolean) => void
+}) {
   const { profile } = useProfile()
   const [code, setCode] = useState('')
+  const [retrying, setRetrying] = useState(false)
   const preview = profile.confirmCode
+
+  function resend() {
+    setRetrying(true)
+    onError('')
+    void requestEmailCode({
+      data: {
+        email: profile.email,
+        firstName: profile.firstName,
+        middleName: profile.middleName,
+        lastName: profile.lastName,
+        phone: profile.phone,
+      },
+    })
+      .then((result) => {
+        updateProfile({ confirmCode: result.previewCode })
+        onMailFailed(!result.sent && !result.previewCode)
+      })
+      .catch(() => onMailFailed(true))
+      .finally(() => setRetrying(false))
+  }
+
   return (
     <div className="grid gap-4">
       <article className="rounded-2xl border border-[var(--line)] bg-white p-4">
@@ -231,8 +271,15 @@ function Confirm({ error, onError, onNext }: { error: string; onError: (value: s
         <h2 className="mt-2 text-xl font-extrabold">Потвърди имейла, преди да продължиш</h2>
         {preview ? (
           <p className="mt-2 leading-7">Кодът за този прототип е {preview}. Щом писмото тръгне, кодът остава само в него.</p>
+        ) : mailFailed ? (
+          <p className="mt-2 leading-7">Писмото не тръгна до {profile.email}. Кодът не важи, докато не го изпратим отново.</p>
         ) : (
           <p className="mt-2 leading-7">Изпратихме шестцифрен код на {profile.email}. Отвори писмото и го въведи тук.</p>
+        )}
+        {preview ? null : (
+          <button type="button" className={`${ghost} mt-3`} disabled={retrying} onClick={resend}>
+            {retrying ? 'Изпращаме…' : 'Изпрати кода отново'}
+          </button>
         )}
         <LegalNotice />
         {preview ? (
