@@ -92,7 +92,7 @@ export function assignmentMail(email: string, section: string, address: string, 
 }
 
 export async function deliverMail(mail: OutboundMail) {
-  if (localDevHost()) return false
+  if (isDevMailHost()) return false
   const sender = (env as unknown as { EMAIL?: { send?: (input: unknown) => Promise<unknown> } }).EMAIL
   if (!sender?.send) return false
   try {
@@ -110,7 +110,7 @@ export async function deliverMail(mail: OutboundMail) {
   }
 }
 
-function localDevHost() {
+export function isDevMailHost() {
   try {
     const bare = getRequestHost().replace(/:\d+$/, '').replace(/^\[|\]$/g, '')
     return bare === 'localhost' || bare === '127.0.0.1' || bare === '::1'
