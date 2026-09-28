@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getCookie, getRequestUrl, setCookie } from '@tanstack/react-start/server'
 import { campaignCsv, internalCsv, normalizeSection, parsePeopleCsv, parseTakenCsv, rosterWhere, type RosterFields, type RosterView } from './admin-csv'
+import { travelLabelOf } from './admin-assign'
 import { NOTES_SQL, notesFromRow } from './admin-notes'
 import { PERSON_SQL_BASE } from './admin-person-sql'
 import { SESSION_COOKIE, signupDatabase, type SignupD1 } from './db-core'
@@ -39,6 +40,8 @@ interface RawPerson {
   notes: string
   call_requested_at: string
   call_message: string
+  radius: string
+  travel_municipalities: string
 }
 
 type Denial = { ok: false; state: 'signed-out' | 'unconfirmed' | 'forbidden' | 'nodb'; email: string; message: string }
@@ -113,10 +116,14 @@ function fieldsOf(row: RawPerson): RosterFields {
     publishedSection: row.published_section,
     egn: row.egn ?? '',
     ...notesFromRow(row),
+    radius: row.radius ?? '',
+    travelLabel: travelLabelOf(row.travel_municipalities ?? ''),
   }
 }
 
-const PERSON_SQL = PERSON_SQL_BASE + NOTES_SQL
+const PERSON_SQL = `${PERSON_SQL_BASE}${NOTES_SQL},
+  COALESCE(radius, '') AS radius,
+  COALESCE(travel_municipalities, '[]') AS travel_municipalities`
 
 function bound(db: Database, sql: string, binds: unknown[]) {
   const statement = db.prepare(sql)

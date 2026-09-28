@@ -1,6 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getCookie, getRequestUrl } from '@tanstack/react-start/server'
-import { SESSION_COOKIE, signupDatabase } from './db-core'
+import { publishBlocked, validateAssignment, warningSummary } from './admin-assign'
+import { normalizeSection } from './admin-csv'
+import { SESSION_COOKIE, signupDatabase, type SignupD1 } from './db-core'
 import { assignmentMail, deliverMail } from './mail'
 import { parseStaffRole, roleAllows } from './staff'
 
@@ -24,6 +26,34 @@ function origin() {
   return `${url.protocol}//${url.host}`
 }
 
+async function blockReason(db: SignupD1, section: string, personId: string, personMir: string) {
+  const code = normalizeSection(section)
+  const taken = await db.prepare('SELECT organisation FROM taken_sections WHERE section_code = ?').bind(code).first<{ organisation: string }>()
+  const published = await db
+    .prepare(`SELECT id, email FROM signups WHERE id != ? AND COALESCE(withdrawn, 0) = 0 AND COALESCE(published_section, '') = ? LIMIT 1`)
+    .bind(personId, code)
+    .first<{ id: string; email: string }>()
+  const draft = published
+    ? null
+    : await db
+        .prepare(`SELECT id, email FROM signups WHERE id != ? AND COALESCE(withdrawn, 0) = 0 AND COALESCE(draft_section, '') = ? LIMIT 1`)
+        .bind(personId, code)
+        .first<{ id: string; email: string }>()
+  const duplicate = published
+    ? { id: published.id, email: published.email, kind: 'published' as const }
+    : draft
+      ? { id: draft.id, email: draft.email, kind: 'draft' as const }
+      : null
+  const warnings = validateAssignment({
+    section: code,
+    personId,
+    personMir,
+    takenOrg: taken?.organisation ?? null,
+    duplicate,
+  })
+  return publishBlocked(warnings) ? warningSummary(warnings) : ''
+}
+
 export const adminPublishOne = createServerFn({ method: 'POST' })
   .validator((input: { id: string }) => input)
   .handler(async ({ data }) => {
@@ -33,6 +63,7 @@ export const adminPublishOne = createServerFn({ method: 'POST' })
     const row = await db
       .prepare(
         `SELECT email,
+                COALESCE(mir_code, '') AS mir,
                 COALESCE(draft_section, '') AS draft_section,
                 COALESCE(published_section, '') AS published_section,
                 COALESCE(section_place, '') AS section_place,
@@ -40,10 +71,12 @@ export const adminPublishOne = createServerFn({ method: 'POST' })
          FROM signups WHERE id = ?`,
       )
       .bind(data.id)
-      .first<{ email: string; draft_section: string; published_section: string; section_place: string; payload_place: string }>()
+      .first<{ email: string; mir: string; draft_section: string; published_section: string; section_place: string; payload_place: string }>()
     if (!row) return { ok: false as const, message: 'Няма такъв запис.' }
     const section = row.draft_section || row.published_section
     if (!section) return { ok: false as const, message: 'Няма чернова или публикувана секция за този човек.' }
+    const blocked = await blockReason(db, section, data.id, row.mir)
+    if (blocked) return { ok: false as const, message: `Не публикувам: ${blocked}` }
     const now = new Date().toISOString()
     if (row.draft_section && row.draft_section !== row.published_section) {
       await db

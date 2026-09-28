@@ -22,6 +22,8 @@ export interface RosterFields {
   notes: string
   callRequestedAt: string
   callMessage: string
+  radius?: string
+  travelLabel?: string
 }
 
 export interface TakenImport {
