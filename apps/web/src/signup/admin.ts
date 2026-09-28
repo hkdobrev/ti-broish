@@ -1,13 +1,18 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getCookie, getRequestUrl, setCookie } from '@tanstack/react-start/server'
 import { campaignCsv, internalCsv, normalizeSection, parsePeopleCsv, parseTakenCsv, rosterWhere, type RosterFields, type RosterView } from './admin-csv'
+import { NOTES_SQL, notesFromRow } from './admin-notes'
+import { PERSON_SQL_BASE } from './admin-person-sql'
 import { SESSION_COOKIE, signupDatabase, type SignupD1 } from './db-core'
 import { deliverMail, importConfirmMail, staffInviteMail } from './mail'
 import { emptyProfile, validEmail, type Profile } from './model'
 import { signupColumns } from './record'
 import { keepsAnAdmin, parseStaffRole, permissionsFor, roleAllows, staffRoleLabel, type StaffAction, type StaffRole } from './staff'
 
-const VIEWS: RosterView[] = ['all', 'assigned', 'unassigned', 'draft', 'abroad', 'mir']
+// Server helpers stay in this file, next to createServerFn. A barrel re-export
+// or a shared module that calls getCookie is loaded by the client and breaks /admin.
+
+const VIEWS: RosterView[] = ['all', 'assigned', 'unassigned', 'draft', 'abroad', 'mir', 'calls']
 const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 
 type Database = SignupD1
@@ -31,6 +36,9 @@ interface RawPerson {
   draft_section: string
   published_section: string
   egn?: string
+  notes: string
+  call_requested_at: string
+  call_message: string
 }
 
 type Denial = { ok: false; state: 'signed-out' | 'unconfirmed' | 'forbidden' | 'nodb'; email: string; message: string }
@@ -60,24 +68,6 @@ async function listStaff(db: Database) {
     return role ? [{ email: row.email, role, invitedBy: row.invited_by }] : []
   })
 }
-
-export const claimStaffSession = createServerFn({ method: 'POST' })
-  .validator((input: { email: string }) => input)
-  .handler(async ({ data }) => {
-    const db = await signupDatabase()
-    const email = data.email.trim().toLowerCase()
-    if (!db) return { ok: false as const, message: 'Няма база за записванията.' }
-    if (!validEmail(email)) return { ok: false as const, message: 'Имейлът не е валиден.' }
-    const row = await db
-      .prepare('SELECT session_token, email_confirmed FROM signups WHERE lower(email) = ?')
-      .bind(email)
-      .first<{ session_token: string | null; email_confirmed: number }>()
-    if (!row?.email_confirmed || !row.session_token) return { ok: false as const, message: 'Няма потвърден профил с този имейл.' }
-    const member = await db.prepare('SELECT role FROM staff WHERE email = ?').bind(email).first<{ role: string }>()
-    if (!parseStaffRole(member?.role)) return { ok: false as const, message: 'Този имейл не е поканен в екипа.' }
-    setCookie(SESSION_COOKIE, row.session_token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 180 })
-    return { ok: true as const }
-  })
 
 async function adminCount(db: Database) {
   const row = await db.prepare(`SELECT COUNT(*) AS n FROM staff WHERE role = 'admin'`).first<{ n: number }>()
@@ -122,25 +112,11 @@ function fieldsOf(row: RawPerson): RosterFields {
     draftSection: row.draft_section,
     publishedSection: row.published_section,
     egn: row.egn ?? '',
+    ...notesFromRow(row),
   }
 }
 
-const PERSON_SQL = `id, email,
-  COALESCE(json_extract(payload, '$.firstName'), '') AS first_name,
-  COALESCE(json_extract(payload, '$.middleName'), '') AS middle_name,
-  COALESCE(json_extract(payload, '$.lastName'), '') AS last_name,
-  COALESCE(json_extract(payload, '$.phone'), '') AS phone,
-  COALESCE(mir_code, '') AS mir,
-  COALESCE(region_code, '') AS region,
-  COALESCE(town_name, '') AS town,
-  COALESCE(section_place, '') AS place,
-  COALESCE(role, '') AS role,
-  COALESCE(submitted, 0) AS submitted,
-  COALESCE(withdrawn, 0) AS withdrawn,
-  COALESCE(email_confirmed, 0) AS email_confirmed,
-  COALESCE(imported, 0) AS imported,
-  COALESCE(draft_section, '') AS draft_section,
-  COALESCE(published_section, '') AS published_section`
+const PERSON_SQL = PERSON_SQL_BASE + NOTES_SQL
 
 function bound(db: Database, sql: string, binds: unknown[]) {
   const statement = db.prepare(sql)
@@ -156,6 +132,24 @@ async function selectPeople(db: Database, clause: string, binds: string[], limit
   ).all<RawPerson>()
   return result.results ?? []
 }
+
+export const claimStaffSession = createServerFn({ method: 'POST' })
+  .validator((input: { email: string }) => input)
+  .handler(async ({ data }) => {
+    const db = await signupDatabase()
+    const email = data.email.trim().toLowerCase()
+    if (!db) return { ok: false as const, message: 'Няма база за записванията.' }
+    if (!validEmail(email)) return { ok: false as const, message: 'Имейлът не е валиден.' }
+    const row = await db
+      .prepare('SELECT session_token, email_confirmed FROM signups WHERE lower(email) = ?')
+      .bind(email)
+      .first<{ session_token: string | null; email_confirmed: number }>()
+    if (!row?.email_confirmed || !row.session_token) return { ok: false as const, message: 'Няма потвърден профил с този имейл.' }
+    const member = await db.prepare('SELECT role FROM staff WHERE email = ?').bind(email).first<{ role: string }>()
+    if (!parseStaffRole(member?.role)) return { ok: false as const, message: 'Този имейл не е поканен в екипа.' }
+    setCookie(SESSION_COOKIE, row.session_token, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 180 })
+    return { ok: true as const }
+  })
 
 export const adminRoster = createServerFn({ method: 'POST' })
   .validator((input: { view: string; mir: string }) => input)
@@ -320,61 +314,6 @@ export const adminResendImports = createServerFn({ method: 'POST' })
     return { ok: true as const, mailed, pending: (rows.results ?? []).length, links }
   })
 
-export const adminInvite = createServerFn({ method: 'POST' })
-  .validator((input: { email: string; role: string }) => input)
-  .handler(async ({ data }) => {
-    const access = await gate('invite')
-    if (!access.ok) return access
-    const email = data.email.trim().toLowerCase()
-    const role = parseStaffRole(data.role)
-    if (!validEmail(email) || !role) return { ok: false as const, message: 'Нужни са валиден имейл и роля.' }
-    const current = await access.db.prepare('SELECT role FROM staff WHERE email = ?').bind(email).first<{ role: string }>()
-    const currentRole = parseStaffRole(current?.role)
-    if (currentRole && !keepsAnAdmin(await adminCount(access.db), currentRole, role)) {
-      return { ok: false as const, message: 'Трябва да остане поне един админ.' }
-    }
-    const now = new Date().toISOString()
-    await access.db
-      .prepare(
-        `INSERT INTO staff (email, role, invited_by, created_at) VALUES (?, ?, ?, ?)
-         ON CONFLICT(email) DO UPDATE SET role = excluded.role, invited_by = excluded.invited_by`,
-      )
-      .bind(email, role, access.email, now)
-      .run()
-    const sent = await deliverMail(staffInviteMail(email, staffRoleLabel(role), `${origin()}/admin`))
-    return { ok: true as const, sent, message: sent ? `Поканата е изпратена на ${email}.` : `${email} е в екипа. Писмото още не тръгва, кажи им да влязат с този имейл.` }
-  })
-
-export const adminStaffRole = createServerFn({ method: 'POST' })
-  .validator((input: { email: string; role: string }) => input)
-  .handler(async ({ data }) => {
-    const access = await gate('invite')
-    if (!access.ok) return access
-    const email = data.email.trim().toLowerCase()
-    const role = parseStaffRole(data.role)
-    if (!role) return { ok: false as const, message: 'Непозната роля.' }
-    const current = await access.db.prepare('SELECT role FROM staff WHERE email = ?').bind(email).first<{ role: string }>()
-    const currentRole = parseStaffRole(current?.role)
-    if (!currentRole) return { ok: false as const, message: 'Този имейл не е в екипа.' }
-    if (!keepsAnAdmin(await adminCount(access.db), currentRole, role)) return { ok: false as const, message: 'Трябва да остане поне един админ.' }
-    await access.db.prepare('UPDATE staff SET role = ?, invited_by = ? WHERE email = ?').bind(role, access.email, email).run()
-    return { ok: true as const, message: `${email} вече е ${staffRoleLabel(role)}.` }
-  })
-
-export const adminStaffRemove = createServerFn({ method: 'POST' })
-  .validator((input: { email: string }) => input)
-  .handler(async ({ data }) => {
-    const access = await gate('invite')
-    if (!access.ok) return access
-    const email = data.email.trim().toLowerCase()
-    const current = await access.db.prepare('SELECT role FROM staff WHERE email = ?').bind(email).first<{ role: string }>()
-    const currentRole = parseStaffRole(current?.role)
-    if (!currentRole) return { ok: false as const, message: 'Този имейл не е в екипа.' }
-    if (!keepsAnAdmin(await adminCount(access.db), currentRole, null)) return { ok: false as const, message: 'Трябва да остане поне един админ.' }
-    await access.db.prepare('DELETE FROM staff WHERE email = ?').bind(email).run()
-    return { ok: true as const, message: `${email} вече не е в екипа.` }
-  })
-
 async function importPerson(db: Database, person: { firstName: string; middleName: string; lastName: string; email: string; phone: string; mir: string; place: string; note: string; role: string }) {
   const existing = await db
     .prepare('SELECT email_confirmed, imported, payload, referral_code FROM signups WHERE email = ?')
@@ -459,3 +398,58 @@ function columnsFor(
   }
   return signupColumns(profile)
 }
+
+export const adminInvite = createServerFn({ method: 'POST' })
+  .validator((input: { email: string; role: string }) => input)
+  .handler(async ({ data }) => {
+    const access = await gate('invite')
+    if (!access.ok) return access
+    const email = data.email.trim().toLowerCase()
+    const role = parseStaffRole(data.role)
+    if (!validEmail(email) || !role) return { ok: false as const, message: 'Нужни са валиден имейл и роля.' }
+    const current = await access.db.prepare('SELECT role FROM staff WHERE email = ?').bind(email).first<{ role: string }>()
+    const currentRole = parseStaffRole(current?.role)
+    if (currentRole && !keepsAnAdmin(await adminCount(access.db), currentRole, role)) {
+      return { ok: false as const, message: 'Трябва да остане поне един админ.' }
+    }
+    const now = new Date().toISOString()
+    await access.db
+      .prepare(
+        `INSERT INTO staff (email, role, invited_by, created_at) VALUES (?, ?, ?, ?)
+         ON CONFLICT(email) DO UPDATE SET role = excluded.role, invited_by = excluded.invited_by`,
+      )
+      .bind(email, role, access.email, now)
+      .run()
+    const sent = await deliverMail(staffInviteMail(email, staffRoleLabel(role), `${origin()}/admin`))
+    return { ok: true as const, sent, message: sent ? `Поканата е изпратена на ${email}.` : `${email} е в екипа. Писмото още не тръгва, кажи им да влязат с този имейл.` }
+  })
+
+export const adminStaffRole = createServerFn({ method: 'POST' })
+  .validator((input: { email: string; role: string }) => input)
+  .handler(async ({ data }) => {
+    const access = await gate('invite')
+    if (!access.ok) return access
+    const email = data.email.trim().toLowerCase()
+    const role = parseStaffRole(data.role)
+    if (!role) return { ok: false as const, message: 'Непозната роля.' }
+    const current = await access.db.prepare('SELECT role FROM staff WHERE email = ?').bind(email).first<{ role: string }>()
+    const currentRole = parseStaffRole(current?.role)
+    if (!currentRole) return { ok: false as const, message: 'Този имейл не е в екипа.' }
+    if (!keepsAnAdmin(await adminCount(access.db), currentRole, role)) return { ok: false as const, message: 'Трябва да остане поне един админ.' }
+    await access.db.prepare('UPDATE staff SET role = ?, invited_by = ? WHERE email = ?').bind(role, access.email, email).run()
+    return { ok: true as const, message: `${email} вече е ${staffRoleLabel(role)}.` }
+  })
+
+export const adminStaffRemove = createServerFn({ method: 'POST' })
+  .validator((input: { email: string }) => input)
+  .handler(async ({ data }) => {
+    const access = await gate('invite')
+    if (!access.ok) return access
+    const email = data.email.trim().toLowerCase()
+    const current = await access.db.prepare('SELECT role FROM staff WHERE email = ?').bind(email).first<{ role: string }>()
+    const currentRole = parseStaffRole(current?.role)
+    if (!currentRole) return { ok: false as const, message: 'Този имейл не е в екипа.' }
+    if (!keepsAnAdmin(await adminCount(access.db), currentRole, null)) return { ok: false as const, message: 'Трябва да остане поне един админ.' }
+    await access.db.prepare('DELETE FROM staff WHERE email = ?').bind(email).run()
+    return { ok: true as const, message: `${email} вече не е в екипа.` }
+  })

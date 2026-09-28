@@ -13,6 +13,7 @@ const views = [
   ['assigned', 'Със секция'],
   ['unassigned', 'Без секция'],
   ['abroad', 'Чужбина'],
+  ['calls', 'Искат обаждане'],
 ] as const
 
 const ghost = 'flex min-h-11 items-center justify-center rounded-[20px] border border-[#ddd] bg-white px-4 text-sm font-bold'
@@ -129,7 +130,8 @@ function PeopleTable({ people }: { people: RosterFields[] }) {
           <tr className="border-b border-[#ddd] text-[#666]">
             <th className="py-2 pr-3 font-bold">Човек</th>
             <th className="py-2 pr-3 font-bold">МИР</th>
-            <th className="py-2 font-bold">Място</th>
+            <th className="py-2 pr-3 font-bold">Място</th>
+            <th className="py-2 font-bold">Бележка / обаждане</th>
           </tr>
         </thead>
         <tbody>
@@ -141,7 +143,14 @@ function PeopleTable({ people }: { people: RosterFields[] }) {
                 <p className="text-[#666]">{person.phone}</p>
               </td>
               <td className="py-3 pr-3">{person.mir || (person.region === '32' ? 'чужбина' : person.region)}</td>
-              <td className="py-3">{person.place}</td>
+              <td className="py-3 pr-3">{person.place}</td>
+              <td className="py-3">
+                {person.callRequestedAt ? (
+                  <p className="font-bold text-[#444]">Иска обаждане{person.callMessage ? `: ${person.callMessage}` : ''}</p>
+                ) : null}
+                {person.notes ? <p className="whitespace-pre-wrap text-[#666]">{person.notes}</p> : null}
+                {!person.callRequestedAt && !person.notes ? <p className="text-[#999]">—</p> : null}
+              </td>
             </tr>
           ))}
         </tbody>

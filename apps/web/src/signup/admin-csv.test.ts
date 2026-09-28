@@ -20,6 +20,9 @@ const person: RosterFields = {
   draftSection: '234600199',
   publishedSection: '234600101',
   egn: '0041010002',
+  notes: 'Имам кола',
+  callRequestedAt: '2026-09-20T10:00:00.000Z',
+  callMessage: 'За секцията',
 }
 
 describe('assignment visibility', () => {
@@ -40,6 +43,10 @@ describe('assignment visibility', () => {
     expect(internal).toContain('234600199')
     expect(internal).toContain('0002')
     expect(internal).not.toContain('0041010002')
+    expect(campaign).toContain('Имам кола')
+    expect(campaign).toContain('За секцията')
+    expect(internal).toContain('Имам кола')
+    expect(internal).toContain(',1,')
   })
 })
 
@@ -51,6 +58,8 @@ describe('roster filters', () => {
     expect('clause' in unassigned && unassigned.clause).toContain("published_section, '') = ''")
     expect('clause' in draft && draft.clause).toContain('draft_section')
     expect(rosterWhere('abroad', '')).toEqual({ clause: "region_code = '32'", binds: [] })
+    const calls = rosterWhere('calls', '')
+    expect('clause' in calls && calls.clause).toContain('callRequestedAt')
     expect(rosterWhere('mir', '3')).toEqual({ clause: 'mir_code = ?', binds: ['03'] })
     expect(rosterWhere('mir', 'София')).toEqual({ error: 'МИР е номер, например 23.' })
   })
