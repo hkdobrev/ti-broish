@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { PageIntro } from '../../components/SiteChrome'
 import { adminExport, adminImportPeople, adminResendImports, adminRoster } from '../../signup/admin'
 import type { RosterFields } from '../../signup/admin-csv'
+import { BrevoCampaignPanel } from './-brevo-campaign-panel'
 
 export const Route = createFileRoute('/admin/signups')({
   component: SignupsPage,
@@ -77,6 +78,7 @@ function SignupsPage() {
         {canInternal ? <button type="button" className={ghost} onClick={() => void adminExport({ data: { view, mir, kind: 'internal' } }).then((result) => result.ok ? download(result.filename, result.csv) : setMessage(result.message))}>CSV за екипа</button> : null}
       </div>
       {message ? <p>{message}</p> : null}
+      <BrevoCampaignPanel enabled={canExport} view={view} mir={mir} setMessage={setMessage} />
       <PeopleTable people={people} />
       {canEdit ? (
         <section className="grid gap-3 border-t border-[#ddd] pt-6">
