@@ -56,6 +56,25 @@ export function importConfirmMail(email: string, link: string): OutboundMail {
   }
 }
 
+export function assignmentMail(email: string, section: string, address: string, link: string): OutboundMail {
+  const place = address.trim() || 'адресът е в профила ти'
+  const text = [
+    `Назначиха ти секция ${section}.`,
+    `Място: ${place}.`,
+    `Виж подробностите в профила: ${link}`,
+    'Ако нещо не е наред, пиши на екипа през бележката в профила.',
+  ].join('\n\n')
+  const href = escapeHtml(link)
+  const sectionHtml = escapeHtml(section)
+  const placeHtml = escapeHtml(place)
+  return {
+    to: email,
+    subject: `Секция ${section} — Ти Броиш`,
+    text,
+    html: `<p>Назначиха ти секция <strong>${sectionHtml}</strong>.</p><p>Място: ${placeHtml}.</p><p><a href="${href}">Отвори профила</a>, за да видиш секцията и инструкциите.</p><p>Ако нещо не е наред, пиши на екипа през бележката в профила.</p>`,
+  }
+}
+
 export async function deliverMail(mail: OutboundMail) {
   if (localDevHost()) return false
   const sender = (env as unknown as { EMAIL?: { send?: (input: unknown) => Promise<unknown> } }).EMAIL
