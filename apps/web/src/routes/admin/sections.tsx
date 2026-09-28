@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { PageIntro } from '../../components/SiteChrome'
 import { adminDraft, adminImportTaken, adminPublish, adminRoster } from '../../signup/admin'
+import { adminNotifyAssignment, adminPublishOne } from '../../signup/assignment-notify'
 import type { RosterFields } from '../../signup/admin-csv'
 
 export const Route = createFileRoute('/admin/sections')({
@@ -48,7 +49,7 @@ function SectionsPage() {
 
   return (
     <div className="grid gap-6">
-      <PageIntro title="Секции" lede="Черновата се вижда само тук. Публикуването я показва в профила. Масовото писмо след това е CSV от Записвания към Brevo." />
+      <PageIntro title="Секции" lede="Черновата се вижда само тук. Масовото публикуване я показва в профила без имейл. За едноизвестяване ползвай „Публикувай и извести“ на реда." />
       <div className="flex flex-wrap gap-2">
         {views.map(([id, label]) => (
           <button key={id} type="button" className={view === id ? 'min-h-10 rounded-full bg-[#333] px-3 text-sm font-bold text-white' : ghost} onClick={() => { setView(id); load(id, mir) }}>
@@ -82,7 +83,7 @@ function SectionsPage() {
             })
           }}
         >
-          {armed ? 'Да, покажи ги в профилите' : 'Публикувай черновите в този изглед'}
+          {armed ? 'Да, покажи ги в профилите (без имейл)' : 'Публикувай черновите в този изглед (без имейл)'}
         </button>
       ) : null}
       {message ? <p>{message}</p> : null}
@@ -124,7 +125,43 @@ function SectionsPage() {
                     </form>
                   ) : person.draftSection}
                 </td>
-                <td className="py-3">{person.publishedSection}</td>
+                <td className="py-3">
+                  <p>{person.publishedSection || '—'}</p>
+                  {canPublish ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {person.draftSection && person.draftSection !== person.publishedSection ? (
+                        <button
+                          type="button"
+                          className="text-sm font-bold"
+                          onClick={() => {
+                            void adminPublishOne({ data: { id: person.id } }).then((result) => {
+                              if (!result.ok) setMessage(result.message)
+                              else {
+                                setMessage(result.message)
+                                load()
+                              }
+                            })
+                          }}
+                        >
+                          Публикувай и извести
+                        </button>
+                      ) : null}
+                      {person.publishedSection ? (
+                        <button
+                          type="button"
+                          className="text-sm font-bold"
+                          onClick={() => {
+                            void adminNotifyAssignment({ data: { id: person.id } }).then((result) => {
+                              setMessage(result.ok ? result.message : result.message)
+                            })
+                          }}
+                        >
+                          Извести пак
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </td>
               </tr>
             ))}
           </tbody>
