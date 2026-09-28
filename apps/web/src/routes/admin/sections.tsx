@@ -132,27 +132,23 @@ function SectionsPage() {
                       {person.draftSection && person.draftSection !== person.publishedSection ? (
                         <button
                           type="button"
-                          className="text-sm font-bold"
+                          className="min-h-10 text-sm font-bold"
                           onClick={() => {
                             void adminPublishOne({ data: { id: person.id } }).then((result) => {
-                              if (!result.ok) setMessage(result.message)
-                              else {
-                                setMessage(result.message)
-                                load()
-                              }
+                              setMessage(result.message)
+                              if (result.ok) load()
                             })
                           }}
                         >
                           Публикувай и извести
                         </button>
-                      ) : null}
-                      {person.publishedSection ? (
+                      ) : person.publishedSection ? (
                         <button
                           type="button"
-                          className="text-sm font-bold"
+                          className="min-h-10 text-sm font-bold"
                           onClick={() => {
                             void adminNotifyAssignment({ data: { id: person.id } }).then((result) => {
-                              setMessage(result.ok ? result.message : result.message)
+                              setMessage(result.message)
                             })
                           }}
                         >
