@@ -58,3 +58,20 @@ export function useProfile() {
 
 export function ensureReferralCode(profile: Profile) {
   const existing = profile.referralCode || profile.inviteCode
+  if (existing) {
+    if (profile.referralCode !== existing || profile.inviteCode !== existing) {
+      updateProfile({ referralCode: existing, inviteCode: existing })
+    }
+    return existing
+  }
+  const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+  const bytes = crypto.getRandomValues(new Uint8Array(6))
+  let code = ''
+  for (const byte of bytes) code += alphabet[byte % alphabet.length]
+  updateProfile({ referralCode: code, inviteCode: code })
+  return code
+}
+
+export function ensureInviteCode(profile: Profile) {
+  return ensureReferralCode(profile)
+}
