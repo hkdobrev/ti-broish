@@ -1,4 +1,4 @@
-export type RosterView = 'all' | 'assigned' | 'unassigned' | 'draft' | 'abroad' | 'mir'
+export type RosterView = 'all' | 'assigned' | 'unassigned' | 'draft' | 'abroad' | 'mir' | 'calls'
 
 export interface RosterFields {
   id: string
@@ -19,6 +19,9 @@ export interface RosterFields {
   draftSection: string
   publishedSection: string
   egn: string
+  notes: string
+  callRequestedAt: string
+  callMessage: string
 }
 
 export interface TakenImport {
@@ -41,7 +44,7 @@ export interface PersonImport {
   role: string
 }
 
-const CAMPAIGN_HEADERS = ['email', 'first_name', 'last_name', 'phone', 'mir', 'place', 'published_section', 'role']
+const CAMPAIGN_HEADERS = ['email', 'first_name', 'last_name', 'phone', 'mir', 'place', 'published_section', 'role', 'notes', 'call_requested', 'call_message']
 const INTERNAL_HEADERS = [
   'email',
   'first_name',
@@ -60,6 +63,9 @@ const INTERNAL_HEADERS = [
   'draft_section',
   'published_section',
   'egn_last4',
+  'notes',
+  'call_requested',
+  'call_message',
 ]
 
 const TAKEN_SECTION = ['секция', 'section', 'code', 'номер', 'section_code']
@@ -92,6 +98,12 @@ export function rosterWhere(view: RosterView, mir: string): { clause: string; bi
   if (view === 'unassigned') return { clause: "COALESCE(published_section, '') = '' AND COALESCE(withdrawn, 0) = 0", binds: [] }
   if (view === 'draft') return { clause: "COALESCE(draft_section, '') != '' AND COALESCE(draft_section, '') != COALESCE(published_section, '')", binds: [] }
   if (view === 'abroad') return { clause: "region_code = '32'", binds: [] }
+  if (view === 'calls') {
+    return {
+      clause: "COALESCE(json_extract(payload, '$.callRequestedAt'), '') != '' AND COALESCE(withdrawn, 0) = 0",
+      binds: [],
+    }
+  }
   if (view === 'mir') {
     const code = mir.trim()
     if (!/^\d{1,2}$/.test(code)) return { error: 'МИР е номер, например 23.' }
@@ -163,7 +175,19 @@ export function parsePeopleCsv(text: string): { rows: PersonImport[]; errors: st
 }
 
 function campaignCells(person: RosterFields) {
-  return [person.email, person.firstName, person.lastName, person.phone, person.mir, person.place, person.publishedSection, person.role]
+  return [
+    person.email,
+    person.firstName,
+    person.lastName,
+    person.phone,
+    person.mir,
+    person.place,
+    person.publishedSection,
+    person.role,
+    person.notes,
+    person.callRequestedAt ? '1' : '0',
+    person.callMessage,
+  ]
 }
 
 function internalCells(person: RosterFields) {
@@ -185,6 +209,9 @@ function internalCells(person: RosterFields) {
     person.draftSection,
     person.publishedSection,
     egnLast4(person.egn),
+    person.notes,
+    person.callRequestedAt ? '1' : '0',
+    person.callMessage,
   ]
 }
 
