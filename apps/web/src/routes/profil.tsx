@@ -98,12 +98,6 @@ function ProfilePage() {
         </Link>
         <p className="text-sm leading-7">
           <Link to="/signal">Подай сигнал</Link>
-          {isProtocolDay() ? (
-            <>
-              {' · '}
-              <Link to="/protokol">Изпрати протокол</Link>
-            </>
-          ) : null}
         </p>
         <AnonymousCall />
       </div>
@@ -111,27 +105,19 @@ function ProfilePage() {
   }
 
   const view = profileView(profile)
-  const wave = nextAssignment(profile)
-  const gap = signupGap(profile)
+  const wave = nextAssignment()
   const assigned = assignmentLocked(profile)
   const canEditPlace = locationEditable(assigned)
 
   return (
-    <div className="grid gap-8">
-      <PageIntro title={`${profile.firstName}, това е профилът ти`} />
-      {view === 'incomplete' ? (
+    <div className="grid gap-6">
+      <PageIntro title="Твоят профил" lede="Тук са данните ти, групата и назначената секция." />
+      {view === 'gap' ? (
         <section className="grid gap-4">
-          <h2 className="text-2xl font-black text-[#444]">{profile.withdrawn ? 'Записването е оттеглено' : 'Записването не е готово'}</h2>
-          <p className="text-lg leading-7">{profile.withdrawn ? 'Мястото се освобождава. Можеш да го върнеш.' : gap}</p>
-          {profile.withdrawn ? (
-            <button type="button" className="brand-button" onClick={() => updateProfile({ withdrawn: false, submitted: true })}>
-              Върни записването
-            </button>
-          ) : (
-            <Link to="/signup" search={{ step: resumeStep(profile) }} className="brand-button">
-              Продължи записването
-            </Link>
-          )}
+          <p className="text-lg leading-7">{signupGap(profile)}</p>
+          <Link to="/signup" search={{ step: 'contact' }} className="brand-button">
+            Довърши записването
+          </Link>
         </section>
       ) : null}
       {view === 'waiting' ? (
@@ -159,14 +145,8 @@ function ProfilePage() {
       ) : null}
 
       <section className="grid gap-3 border-t border-[var(--line)] pt-6">
-        <h2 className="text-xl font-black text-[#444]">Материали</h2>
-        <p className="leading-7">Прочети ги преди изборния ден. Пълномощното идва след разпределението, в изборната седмица.</p>
-        <Link to="/instructions" className="font-bold">
-          Инструкции за секцията
-        </Link>
-        <a className="font-bold" href="https://tibroish.bg/files/Narachnik-Ti-broish.pdf">
-          Наръчник на пазителя
-        </a>
+        <h2 className="text-xl font-black text-[#444]">Бележка към екипа</h2>
+        <StaffNote />
         {view === 'assigned' ? null : (
           <Link to="/znachka" className="font-bold">
             Значка за печат, още сега
@@ -181,7 +161,8 @@ function ProfilePage() {
           <ul className="grid gap-2">
             {profile.companions.map((person) => (
               <li key={person.id}>
-                {person.firstName} {person.lastName} · чака техния имейл
+                {person.firstName} {person.lastName} ·{' '}
+                {person.status === 'confirmed' ? 'потвърден имейл' : 'чака потвърждение'}
               </li>
             ))}
           </ul>
@@ -201,52 +182,15 @@ function ProfilePage() {
             </>
           ) : null}
         </p>
-        <StaffNote />
-        <p>
-          <Link to="/signal">Подай сигнал</Link>
-          {isProtocolDay() ? (
-            <>
-              {' · '}
-              <Link to="/protokol">Изпрати протокол</Link>
-            </>
-          ) : null}
-          {' · '}
-          <Link to="/izprateni">Изпратените</Link>
-        </p>
-        <Link to="/signup" search={{ step: 'contact' }} className="font-bold">
-          Промени данните
-        </Link>
         {canEditPlace ? (
           <Link to="/signup" search={{ step: 'place' }} className="font-bold">
             Промени мястото{assigned && mirOf(profile.place) ? ` в МИР ${mirOf(profile.place)}` : ''}
           </Link>
-        ) : (
-          <p className="leading-7">От 19 октомври до 5 ноември мястото не се сменя.</p>
-        )}
-        {!profile.withdrawn ? (
-          <button
-            type="button"
-            className="flex min-h-14 w-full items-center justify-center rounded-[20px] border border-[#333] bg-white px-5 text-xl font-bold"
-            onClick={() => updateProfile({ withdrawn: true, submitted: true })}
-          >
-            Оттегли записването
-          </button>
         ) : null}
-        <p className="text-sm leading-6">
-          Това е доброволна дейност без заплащане. Ще бъдете представител на Инициативния комитет за кандидат-президентската двойка Андрей Гюров и Георги Кандев.
-        </p>
+        {isProtocolDay() ? (
+          <p className="leading-7">Днес е ден за протокол — ползвай инструкциите в профила.</p>
+        ) : null}
       </section>
     </div>
   )
-}
-
-function resumeStep(profile: Profile) {
-  if (!profile.firstName || !profile.email || !profile.phone) return 'contact' as const
-  if (!profile.emailConfirmed) return 'confirm' as const
-  if (!profile.egn) return 'egn' as const
-  if (!profile.role || profile.role === 'video') return 'role' as const
-  if (!profile.experience) return 'experience' as const
-  if (!profile.place) return 'place' as const
-  if (!profile.radius) return 'travel' as const
-  return 'review' as const
 }
