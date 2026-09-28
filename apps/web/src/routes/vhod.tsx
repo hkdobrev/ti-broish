@@ -14,7 +14,7 @@ function LoginPage() {
 
   return (
     <div className="max-w-xl">
-      <PageIntro title="Влез в профила си" lede="В прототипа профилът живее в този браузър. В понеделник линкът от имейла ще те вписва и от друг телефон." />
+      <PageIntro title="Влез в профила си" lede="Влез с потвърдения си имейл. Сесията е в cookie (tb_session); записът е в базата, не само в този браузър." />
       <form
         className="grid gap-3"
         onSubmit={(event) => {
@@ -32,12 +32,12 @@ function LoginPage() {
       </form>
       {sent && matches ? (
         <p className="mt-4">
-          Писмото е симулирано. <Link to="/profil">Отвори профила</Link>
+          Ако вече си потвърдил този имейл на това устройство, <Link to="/profil">отвори профила</Link>.
         </p>
       ) : null}
       {sent && !matches ? (
         <p className="mt-4">
-          Няма потвърден профил с този имейл на този браузър. <Link to="/signup" search={{ step: 'contact' }}>Запиши се</Link>
+          Няма активна сесия за този имейл тук. <Link to="/signup" search={{ step: 'contact' }}>Запиши се или потвърди имейла</Link>
         </p>
       ) : null}
     </div>
