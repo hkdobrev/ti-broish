@@ -84,7 +84,9 @@ function SignupPage() {
       const payload = counted ? { ...profile, submitted: true } : profile
       if (counted && !profile.submitted) updateProfile({ submitted: true })
       void saveSignup({ data: payload }).then((result) => {
-        if (result.ok && result.referrerName && result.referrerName !== profile.referrerName) {
+        if (!result.ok) return
+        if (result.pendingLinks.length > 0) setUnsentCompanionLinks(result.pendingLinks)
+        if (result.referrerName && result.referrerName !== profile.referrerName) {
           updateProfile({ referrerName: result.referrerName })
         }
       })
@@ -92,6 +94,7 @@ function SignupPage() {
     return () => window.clearTimeout(handle)
   }, [profile, ready])
   const [companion, setCompanion] = useState<Companion>(blankCompanion())
+  const [unsentCompanionLinks, setUnsentCompanionLinks] = useState<{ email: string; link: string }[]>([])
   const steps = stepsFor(profile)
   const requested = step === 'radius' ? 'travel' : step
   const current = (steps as readonly string[]).includes(requested) ? (requested as StepId) : 'contact'
@@ -140,7 +143,7 @@ function SignupPage() {
       {current === 'place' ? <PlaceStep error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'travel' ? <TravelStep error={error} onError={setError} onNext={nextStep} /> : null}
       {current === 'seats' ? <Seats error={error} onError={setError} onNext={nextStep} /> : null}
-      {current === 'people' ? <People companion={companion} setCompanion={setCompanion} error={error} onError={setError} onNext={nextStep} /> : null}
+      {current === 'people' ? <People companion={companion} setCompanion={setCompanion} error={error} onError={setError} onNext={nextStep} unsentLinks={unsentCompanionLinks} /> : null}
       {current === 'review' ? <Review error={error} onError={setError} /> : null}
       {index > 0 ? (
         <button type="button" className={`${ghost} mt-6`} onClick={() => go(steps[index - 1] ?? 'contact')}>
@@ -672,12 +675,14 @@ function People({
   error,
   onError,
   onNext,
+  unsentLinks,
 }: {
   companion: Companion
   setCompanion: (value: Companion) => void
   error: string
   onError: (value: string) => void
   onNext: () => void
+  unsentLinks: { email: string; link: string }[]
 }) {
   const { profile } = useProfile()
 
@@ -741,11 +746,18 @@ function People({
       </div>
       {profile.companions.length > 0 ? (
         <ul className="grid gap-2">
-          {profile.companions.map((person) => (
+          {profile.companions.map((person) => {
+            const unsent = unsentLinks.find((item) => item.email === person.email.trim().toLowerCase())
+            return (
             <li key={person.id} className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--line)] bg-white px-4 py-3">
               <span>
                 {person.firstName} {person.lastName}
                 <span className="block text-sm text-[#666]">{person.inGroup === false ? 'Извън групата' : 'В групата'} · {person.email}</span>
+                {unsent ? (
+                  <span className="block text-sm text-[#666]">
+                    Писмото не тръгна. Прати им линка: <a href={unsent.link}>{unsent.link}</a>
+                  </span>
+                ) : null}
               </span>
               <button
                 type="button"
@@ -755,7 +767,8 @@ function People({
                 Махни
               </button>
             </li>
-          ))}
+            )
+          })}
         </ul>
       ) : (
         <p className="text-sm leading-6">Може и без група. Повечето хора се записват сами.</p>
