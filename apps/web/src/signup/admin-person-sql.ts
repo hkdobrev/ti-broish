@@ -1,0 +1,17 @@
+/** Shared SELECT list for admin roster rows (assignment columns only). */
+export const PERSON_SQL_BASE = `id, email,
+  COALESCE(json_extract(payload, '$.firstName'), '') AS first_name,
+  COALESCE(json_extract(payload, '$.middleName'), '') AS middle_name,
+  COALESCE(json_extract(payload, '$.lastName'), '') AS last_name,
+  COALESCE(json_extract(payload, '$.phone'), '') AS phone,
+  COALESCE(mir_code, '') AS mir,
+  COALESCE(region_code, '') AS region,
+  COALESCE(town_name, '') AS town,
+  COALESCE(section_place, '') AS place,
+  COALESCE(role, '') AS role,
+  COALESCE(submitted, 0) AS submitted,
+  COALESCE(withdrawn, 0) AS withdrawn,
+  COALESCE(email_confirmed, 0) AS email_confirmed,
+  COALESCE(imported, 0) AS imported,
+  COALESCE(draft_section, '') AS draft_section,
+  COALESCE(published_section, '') AS published_section`
